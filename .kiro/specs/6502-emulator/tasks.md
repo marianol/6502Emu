@@ -64,38 +64,38 @@
   - _Requirements: 3.1, 3.2_
 
 - [x] 5. Implement 68B50 ACIA peripheral
-- [ ] 5.1 Create ACIA68B50 peripheral implementation
+- [x] 5.1 Create ACIA68B50 peripheral implementation
   - Implement control and status register functionality
   - Add data transmission and reception capabilities
   - Create baud rate configuration and timing simulation
   - _Requirements: 3.3_
 
-- [ ] 5.2 Add serial port connectivity
+- [x] 5.2 Add serial port connectivity
   - Implement serial port interface for host system communication
   - Add configurable serial port connections
   - Create data buffering and flow control
   - _Requirements: 3.3_
 
-- [ ] 5.3 Write ACIA unit tests
+- [x] 5.3 Write ACIA unit tests
   - Test control register configuration and status reporting
   - Verify data transmission and reception functionality
   - Test serial port connectivity and timing
   - _Requirements: 3.3_
 
-- [ ] 6. Implement 65C22 VIA peripheral
-- [ ] 6.1 Create VIA65C22 peripheral implementation
+- [x] 6. Implement 65C22 VIA peripheral
+- [x] 6.1 Create VIA65C22 peripheral implementation
   - Implement Port A and Port B data and direction registers
   - Add timer 1 and timer 2 functionality with interrupt generation
   - Create shift register implementation
   - _Requirements: 3.1, 3.4_
 
-- [ ] 6.2 Implement VIA interrupt system
+- [x] 6.2 Implement VIA interrupt system
   - Add interrupt enable/disable functionality for all VIA interrupt sources
   - Implement interrupt flag register and clearing
   - Integrate VIA interrupts with main interrupt controller
   - _Requirements: 3.2, 3.4_
 
-- [ ] 6.3 Write VIA unit tests
+- [x] 6.3 Write VIA unit tests
   - Test port I/O functionality and direction control
   - Verify timer operations and interrupt generation
   - Test shift register and all interrupt sources
