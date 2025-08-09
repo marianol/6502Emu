@@ -63,7 +63,7 @@
   - Test peripheral-to-CPU communication
   - _Requirements: 3.1, 3.2_
 
-- [ ] 5. Implement 68B50 ACIA peripheral
+- [x] 5. Implement 68B50 ACIA peripheral
 - [ ] 5.1 Create ACIA68B50 peripheral implementation
   - Implement control and status register functionality
   - Add data transmission and reception capabilities
