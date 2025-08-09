@@ -14,14 +14,6 @@
   "keywords": ["6502", "65C02", "emulator", "homebrew", "computer"],
   "author": "",
   "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/jest": "^29.0.0",
-    "jest": "^29.0.0",
-    "ts-jest": "^29.0.0",
-    "ts-node": "^10.0.0",
-    "typescript": "^5.0.0"
-  },
   "dependencies": {
     "node-addon-api": "^7.0.0"
   },
