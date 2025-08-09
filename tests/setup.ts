@@ -1,0 +1,1 @@
+// Test setup file for Jest\n// This file is run before each test suite\n\n// Mock console.warn to avoid noise during tests\nglobal.console = {\n  ...console,\n  warn: jest.fn(),\n};\n\n// Set up any global test utilities here\nexport {};

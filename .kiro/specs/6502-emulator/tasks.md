@@ -6,20 +6,20 @@
   - Document licensing requirements and integration approach for selected emulator
   - _Requirements: 1.1, 1.5_
 
-- [ ] 2. Integrate selected 6502/65C02 emulator
-- [ ] 2.1 Create CPU emulator wrapper interface
+- [x] 2. Integrate selected 6502/65C02 emulator
+- [x] 2.1 Create CPU emulator wrapper interface
   - Implement CPU6502 interface that wraps the selected emulator
   - Add support for both 6502 and 65C02 processor variants
   - Implement memory access callbacks for custom memory mapping
   - _Requirements: 1.2, 1.3_
 
-- [ ] 2.2 Implement basic CPU control and state management
+- [x] 2.2 Implement basic CPU control and state management
   - Write functions for CPU reset, single-step execution, and register access
   - Add breakpoint management functionality
   - Create interrupt control methods (IRQ/NMI generation and clearing)
   - _Requirements: 1.2, 1.4_
 
-- [ ] 2.3 Write unit tests for CPU integration
+- [x] 2.3 Write unit tests for CPU integration
   - Create test suite that verifies standard 6502 instruction execution
   - Test both 6502 and 65C02 processor variants
   - Verify interrupt handling and breakpoint functionality
