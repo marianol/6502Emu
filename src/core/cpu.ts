@@ -3,6 +3,8 @@
  * Wraps the fake6502 emulator with a TypeScript interface
  */
 
+import { InterruptController } from './interrupt-controller';
+
 // CPU state interface
 export interface CPUState {
   A: number;      // Accumulator
@@ -48,6 +50,9 @@ export interface CPU6502 {
   isIRQPending(): boolean;
   isNMIPending(): boolean;
   
+  // Interrupt controller integration
+  setInterruptController(controller: InterruptController): void;
+  
   // Memory access callbacks
   setMemoryCallbacks(read: MemoryReadCallback, write: MemoryWriteCallback): void;
 }
@@ -71,6 +76,7 @@ export class CPU6502Emulator implements CPU6502 {
   private memoryRead: MemoryReadCallback;
   private memoryWrite: MemoryWriteCallback;
   private useNativeAddon: boolean;
+  private interruptController?: InterruptController;
   
   // Fallback state for when native addon is not available
   private fallbackState: CPUState = {
@@ -249,6 +255,16 @@ export class CPU6502Emulator implements CPU6502 {
         (address: number, value: number) => this.memoryWrite(address, value)
       );
     }
+  }
+  
+  setInterruptController(controller: InterruptController): void {
+    this.interruptController = controller;
+    
+    // Set up interrupt controller callbacks to trigger CPU interrupts
+    controller.setCallbacks(
+      () => this.triggerIRQ(),
+      () => this.triggerNMI()
+    );
   }
   
   // Helper methods

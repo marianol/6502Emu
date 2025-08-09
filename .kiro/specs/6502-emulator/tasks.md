@@ -44,20 +44,20 @@
   - Test memory reconfiguration scenarios
   - _Requirements: 2.5_
 
-- [ ] 4. Implement peripheral system foundation
-- [ ] 4.1 Create base peripheral interface and hub
+- [x] 4. Implement peripheral system foundation
+- [x] 4.1 Create base peripheral interface and hub
   - Implement Peripheral base interface with read/write/reset/tick methods
   - Create PeripheralHub for managing multiple peripheral components
   - Add peripheral registration and address mapping system
   - _Requirements: 3.1, 3.2_
 
-- [ ] 4.2 Implement interrupt controller
+- [x] 4.2 Implement interrupt controller
   - Create InterruptController for managing IRQ/NMI signals
   - Add interrupt source tracking and priority handling
   - Integrate interrupt controller with CPU emulator
   - _Requirements: 3.2, 5.5_
 
-- [ ] 4.3 Write peripheral system unit tests
+- [x] 4.3 Write peripheral system unit tests
   - Test peripheral registration and address mapping
   - Verify interrupt controller functionality
   - Test peripheral-to-CPU communication
