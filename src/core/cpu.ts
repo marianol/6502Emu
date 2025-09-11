@@ -108,15 +108,32 @@ export class CPU6502Emulator implements CPU6502 {
   }
   
   reset(): void {
+    // Always read reset vector from our memory system
+    let resetPC = 0x0000; // Default to 0 if no reset vector
+    try {
+      resetPC = this.readWord(0xFFFC); // Try to read reset vector
+      } catch (error) {
+      // If memory read fails, use default
+      console.warn('Failed to read reset vector, using default PC=0x0000');
+      resetPC = 0x0000;
+    }
+    
     if (this.useNativeAddon) {
+      // Reset native addon and then set PC to reset vector
       nativeAddon.reset();
+      // Set the PC to the reset vector we read from memory
+      const currentState = nativeAddon.getState();
+      nativeAddon.setState({
+        ...currentState,
+        pc: resetPC
+      });
     } else {
       // Fallback implementation
       this.fallbackState = {
         A: 0,
         X: 0,
         Y: 0,
-        PC: this.readWord(0xFFFC), // Reset vector
+        PC: resetPC,
         SP: 0xFF,
         P: 0x20, // Interrupt disable flag set
         cycles: 0
@@ -271,7 +288,8 @@ export class CPU6502Emulator implements CPU6502 {
   private readWord(address: number): number {
     const low = this.memoryRead(address);
     const high = this.memoryRead((address + 1) & 0xFFFF);
-    return low | (high << 8);
+    const result = low | (high << 8);
+    return result;
   }
   
   private pushByte(value: number): void {

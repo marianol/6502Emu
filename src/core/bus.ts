@@ -84,7 +84,7 @@ export class SystemBus {
    */
   reset(): void {
     this.cpu.reset();
-    this.memory.reset();
+    this.memory.resetRAM();
     this.peripheralHub.reset();
     this.interruptController.reset();
   }

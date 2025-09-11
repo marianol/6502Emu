@@ -164,20 +164,20 @@
   - Test CC65 runtime library interactions
   - _Requirements: 6.1, 6.5_
 
-- [ ] 10. Create main emulator application
-- [ ] 10.1 Implement emulator main loop and initialization
+- [x] 10. Create main emulator application
+- [x] 10.1 Implement emulator main loop and initialization
   - Create main emulator class that coordinates all components
   - Implement system initialization from configuration
   - Add main execution loop with timing control
   - _Requirements: 4.2, 4.4_
 
-- [ ] 10.2 Add command-line interface and program loading
+- [x] 10.2 Add command-line interface and program loading
   - Implement CLI for loading ROM images and starting execution
   - Add support for different program loading modes
   - Create execution control commands (run, step, stop)
   - _Requirements: 4.1, 4.3_
 
-- [ ] 10.3 Write integration tests for complete system
+- [x] 10.3 Write integration tests for complete system
   - Test end-to-end program execution scenarios
   - Verify peripheral interactions during program execution
   - Test debugging features with real programs

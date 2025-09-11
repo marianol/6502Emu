@@ -1,0 +1,38 @@
+{
+  "memory": {
+    "ramSize": 32768,
+    "ramStart": 0,
+    "romImages": [
+      {
+        "file": "examples/test-program.bin",
+        "loadAddress": 61440,
+        "format": "binary"
+      }
+    ]
+  },
+  "peripherals": {
+    "acia": {
+      "baseAddress": 32768,
+      "baudRate": 9600
+    },
+    "via": {
+      "baseAddress": 32784,
+      "enableTimers": true,
+      "portAConnections": [
+        {
+          "pin": 0,
+          "device": "led",
+          "type": "output"
+        }
+      ]
+    }
+  },
+  "cpu": {
+    "type": "65C02",
+    "clockSpeed": 1000000
+  },
+  "debugging": {
+    "enableTracing": false,
+    "breakOnReset": false
+  }
+}
