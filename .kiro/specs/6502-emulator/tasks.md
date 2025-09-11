@@ -145,20 +145,20 @@
   - Test manual interrupt generation and monitoring
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 9. Implement CC65 compatibility features
-- [ ] 9.1 Add CC65 symbol file support
+- [x] 9. Implement CC65 compatibility features
+- [x] 9.1 Add CC65 symbol file support
   - Implement CC65 debug symbol file parsing
   - Add symbol-to-address mapping for source-level debugging
   - Create symbol lookup and reverse lookup functionality
   - _Requirements: 6.2, 6.4_
 
-- [ ] 9.2 Create CC65 memory layout support
+- [x] 9.2 Create CC65 memory layout support
   - Add support for standard CC65 memory configurations
   - Implement CC65 runtime library compatibility checks
   - Create CC65-specific startup sequence handling
   - _Requirements: 6.1, 6.3_
 
-- [ ] 9.3 Write CC65 compatibility tests
+- [x] 9.3 Write CC65 compatibility tests
   - Test symbol file loading and source-level debugging
   - Verify CC65 binary execution and memory layout
   - Test CC65 runtime library interactions
