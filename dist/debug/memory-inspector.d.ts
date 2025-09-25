@@ -18,6 +18,8 @@ export declare class MemoryInspectorImpl implements MemoryInspector {
     private dumpAscii;
     private dumpDisassembly;
     private disassembleInstruction;
+    private formatInstruction;
+    private calculateBranchTarget;
     private getOpcodeMnemonic;
     private getInstructionLength;
 }

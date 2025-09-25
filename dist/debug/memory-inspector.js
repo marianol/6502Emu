@@ -96,19 +96,140 @@ class MemoryInspectorImpl {
     disassembleInstruction(addr, opcode) {
         const addrStr = addr.toString(16).padStart(4, '0').toUpperCase();
         const opcodeStr = opcode.toString(16).padStart(2, '0').toUpperCase();
-        // Simplified disassembly - just show basic info
-        const mnemonic = this.getOpcodeMnemonic(opcode);
         const length = this.getInstructionLength(opcode);
-        let operandStr = '';
+        const { mnemonic, operandDisplay } = this.formatInstruction(addr, opcode, length);
+        // Build operand bytes string for display
+        let operandBytes = '';
         if (length > 1) {
             const operand1 = this.memoryManager.read(addr + 1);
-            operandStr = operand1.toString(16).padStart(2, '0').toUpperCase();
+            operandBytes = operand1.toString(16).padStart(2, '0').toUpperCase();
             if (length > 2) {
                 const operand2 = this.memoryManager.read(addr + 2);
-                operandStr = operand2.toString(16).padStart(2, '0').toUpperCase() + operandStr;
+                operandBytes += operand2.toString(16).padStart(2, '0').toUpperCase();
             }
         }
-        return `${addrStr}: ${opcodeStr} ${operandStr.padEnd(4)} ${mnemonic}`;
+        return `${addrStr}: ${opcodeStr} ${operandBytes.padEnd(4)} ${mnemonic}${operandDisplay}`;
+    }
+    formatInstruction(addr, opcode, length) {
+        // Read operands
+        let operand1 = 0, operand2 = 0, operand16 = 0;
+        if (length > 1) {
+            operand1 = this.memoryManager.read(addr + 1);
+            if (length > 2) {
+                operand2 = this.memoryManager.read(addr + 2);
+                operand16 = operand1 | (operand2 << 8); // Little-endian 16-bit value
+            }
+        }
+        // Format based on opcode
+        switch (opcode) {
+            // Implied/Accumulator instructions
+            case 0x00: return { mnemonic: 'BRK', operandDisplay: '' };
+            case 0x08: return { mnemonic: 'PHP', operandDisplay: '' };
+            case 0x0A: return { mnemonic: 'ASL', operandDisplay: ' A' };
+            case 0x18: return { mnemonic: 'CLC', operandDisplay: '' };
+            case 0x28: return { mnemonic: 'PLP', operandDisplay: '' };
+            case 0x2A: return { mnemonic: 'ROL', operandDisplay: ' A' };
+            case 0x38: return { mnemonic: 'SEC', operandDisplay: '' };
+            case 0x40: return { mnemonic: 'RTI', operandDisplay: '' };
+            case 0x48: return { mnemonic: 'PHA', operandDisplay: '' };
+            case 0x4A: return { mnemonic: 'LSR', operandDisplay: ' A' };
+            case 0x58: return { mnemonic: 'CLI', operandDisplay: '' };
+            case 0x60: return { mnemonic: 'RTS', operandDisplay: '' };
+            case 0x68: return { mnemonic: 'PLA', operandDisplay: '' };
+            case 0x6A: return { mnemonic: 'ROR', operandDisplay: ' A' };
+            case 0x78: return { mnemonic: 'SEI', operandDisplay: '' };
+            case 0x88: return { mnemonic: 'DEY', operandDisplay: '' };
+            case 0x8A: return { mnemonic: 'TXA', operandDisplay: '' };
+            case 0x98: return { mnemonic: 'TYA', operandDisplay: '' };
+            case 0x9A: return { mnemonic: 'TXS', operandDisplay: '' };
+            case 0xA8: return { mnemonic: 'TAY', operandDisplay: '' };
+            case 0xAA: return { mnemonic: 'TAX', operandDisplay: '' };
+            case 0xB8: return { mnemonic: 'CLV', operandDisplay: '' };
+            case 0xBA: return { mnemonic: 'TSX', operandDisplay: '' };
+            case 0xC8: return { mnemonic: 'INY', operandDisplay: '' };
+            case 0xCA: return { mnemonic: 'DEX', operandDisplay: '' };
+            case 0xD8: return { mnemonic: 'CLD', operandDisplay: '' };
+            case 0xE8: return { mnemonic: 'INX', operandDisplay: '' };
+            case 0xEA: return { mnemonic: 'NOP', operandDisplay: '' };
+            case 0xF8: return { mnemonic: 'SED', operandDisplay: '' };
+            // Immediate instructions
+            case 0x09: return { mnemonic: 'ORA', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x29: return { mnemonic: 'AND', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x49: return { mnemonic: 'EOR', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x69: return { mnemonic: 'ADC', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xA0: return { mnemonic: 'LDY', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xA2: return { mnemonic: 'LDX', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xA9: return { mnemonic: 'LDA', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xC0: return { mnemonic: 'CPY', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xC9: return { mnemonic: 'CMP', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xE0: return { mnemonic: 'CPX', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xE9: return { mnemonic: 'SBC', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            // Zero page instructions
+            case 0x05: return { mnemonic: 'ORA', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x06: return { mnemonic: 'ASL', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x24: return { mnemonic: 'BIT', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x25: return { mnemonic: 'AND', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x26: return { mnemonic: 'ROL', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x45: return { mnemonic: 'EOR', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x46: return { mnemonic: 'LSR', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x65: return { mnemonic: 'ADC', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x66: return { mnemonic: 'ROR', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x84: return { mnemonic: 'STY', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x85: return { mnemonic: 'STA', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0x86: return { mnemonic: 'STX', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xA4: return { mnemonic: 'LDY', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xA5: return { mnemonic: 'LDA', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xA6: return { mnemonic: 'LDX', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xC4: return { mnemonic: 'CPY', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xC5: return { mnemonic: 'CMP', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xC6: return { mnemonic: 'DEC', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xE4: return { mnemonic: 'CPX', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xE5: return { mnemonic: 'SBC', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            case 0xE6: return { mnemonic: 'INC', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+            // Absolute instructions
+            case 0x0D: return { mnemonic: 'ORA', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x0E: return { mnemonic: 'ASL', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x20: return { mnemonic: 'JSR', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x2C: return { mnemonic: 'BIT', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x2D: return { mnemonic: 'AND', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x2E: return { mnemonic: 'ROL', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x4C: return { mnemonic: 'JMP', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x4D: return { mnemonic: 'EOR', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x4E: return { mnemonic: 'LSR', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x6C: return { mnemonic: 'JMP', operandDisplay: ` ($${operand16.toString(16).padStart(4, '0').toUpperCase()})` };
+            case 0x6D: return { mnemonic: 'ADC', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x6E: return { mnemonic: 'ROR', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x8C: return { mnemonic: 'STY', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x8D: return { mnemonic: 'STA', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x8E: return { mnemonic: 'STX', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xAC: return { mnemonic: 'LDY', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xAD: return { mnemonic: 'LDA', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xAE: return { mnemonic: 'LDX', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xCC: return { mnemonic: 'CPY', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xCD: return { mnemonic: 'CMP', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xCE: return { mnemonic: 'DEC', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xEC: return { mnemonic: 'CPX', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xED: return { mnemonic: 'SBC', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xEE: return { mnemonic: 'INC', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+            // Relative branches (calculate target address)
+            case 0x10: return { mnemonic: 'BPL', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x30: return { mnemonic: 'BMI', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x50: return { mnemonic: 'BVC', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x70: return { mnemonic: 'BVS', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0x90: return { mnemonic: 'BCC', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xB0: return { mnemonic: 'BCS', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xD0: return { mnemonic: 'BNE', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
+            case 0xF0: return { mnemonic: 'BEQ', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
+            // Add more instructions as needed...
+            default:
+                return { mnemonic: `??? (${opcode.toString(16).padStart(2, '0').toUpperCase()})`, operandDisplay: '' };
+        }
+    }
+    calculateBranchTarget(addr, offset) {
+        // Convert unsigned byte to signed offset
+        const signedOffset = offset > 127 ? offset - 256 : offset;
+        // Branch target is PC + 2 (after instruction) + offset
+        return (addr + 2 + signedOffset) & 0xFFFF;
     }
     getOpcodeMnemonic(opcode) {
         // Simplified opcode to mnemonic mapping
