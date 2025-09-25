@@ -145,6 +145,20 @@ export class EmulatorCLI {
     });
 
     this.addCommand({
+      name: 'write',
+      description: 'Write byte(s) to memory',
+      usage: 'write <address> <byte1> [byte2] [byte3] ...',
+      handler: this.handleWrite.bind(this)
+    });
+
+    this.addCommand({
+      name: 'poke',
+      description: 'Write single byte to memory',
+      usage: 'poke <address> <byte>',
+      handler: this.handlePoke.bind(this)
+    });
+
+    this.addCommand({
       name: 'break',
       description: 'Set breakpoint',
       usage: 'break <address>',
@@ -386,6 +400,71 @@ export class EmulatorCLI {
     const inspector = this.emulator.getMemoryInspector();
     const dump = inspector.dumpMemory(address, length, 'hex');
     console.log(dump);
+  }
+
+  private handleWrite(args: string[]): void {
+    if (args.length < 2) {
+      console.log('Usage: write <address> <byte1> [byte2] [byte3] ...');
+      console.log('Example: write 0200 A9 42 8D 00 02');
+      return;
+    }
+
+    const address = parseInt(args[0], 16);
+    if (isNaN(address)) {
+      console.log('Invalid address format. Use hexadecimal (e.g., 0200)');
+      return;
+    }
+
+    const bytes: number[] = [];
+    for (let i = 1; i < args.length; i++) {
+      const byte = parseInt(args[i], 16);
+      if (isNaN(byte) || byte < 0 || byte > 255) {
+        console.log(`Invalid byte value: ${args[i]}. Must be 00-FF`);
+        return;
+      }
+      bytes.push(byte);
+    }
+
+    try {
+      const memory = this.emulator.getSystemBus().getMemory();
+      for (let i = 0; i < bytes.length; i++) {
+        memory.write(address + i, bytes[i]);
+      }
+      
+      console.log(`Wrote ${bytes.length} byte(s) to ${address.toString(16).toUpperCase().padStart(4, '0')}: ${bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}`);
+    } catch (error) {
+      console.error(`Failed to write memory: ${error}`);
+    }
+  }
+
+  private handlePoke(args: string[]): void {
+    if (args.length !== 2) {
+      console.log('Usage: poke <address> <byte>');
+      console.log('Example: poke 0200 A9');
+      return;
+    }
+
+    const address = parseInt(args[0], 16);
+    const byte = parseInt(args[1], 16);
+
+    if (isNaN(address)) {
+      console.log('Invalid address format. Use hexadecimal (e.g., 0200)');
+      return;
+    }
+
+    if (isNaN(byte) || byte < 0 || byte > 255) {
+      console.log('Invalid byte value. Must be 00-FF');
+      return;
+    }
+
+    try {
+      const memory = this.emulator.getSystemBus().getMemory();
+      memory.write(address, byte);
+      
+      console.log(`Poked ${address.toString(16).toUpperCase().padStart(4, '0')}: ${byte.toString(16).toUpperCase().padStart(2, '0')}`);
+    } catch (error) {
+      console.error(`Failed to poke memory: ${error}`);
+    }
   }
 
   private handleBreakpoint(args: string[]): void {

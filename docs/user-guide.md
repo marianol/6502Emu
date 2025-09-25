@@ -121,6 +121,8 @@ Once in the CLI, you can use these commands:
 **Debugging:**
 - `regs` - Show CPU registers and flags
 - `mem <address> [length]` - Display memory contents
+- `write <address> <byte1> [byte2] ...` - Write multiple bytes to memory
+- `poke <address> <byte>` - Write single byte to memory
 - `break <address>` - Set breakpoint
 - `unbreak <address>` - Remove breakpoint
 
@@ -143,10 +145,18 @@ npm run cli
 6502> mem 200 16
 6502> quit
 
+# Memory manipulation examples
+npm run cli
+6502> write 0200 A9 42 8D 00 02    # Write LDA #$42, STA $0200
+6502> poke 0205 EA                 # Write NOP instruction
+6502> mem 200 8                    # View written bytes
+6502> quit
+
 # Batch commands via pipe
 echo "load examples/minimal-system.json
+write 0200 A9 42
+mem 200 4
 status
-regs
 quit" | npm run cli
 ```
 
@@ -285,6 +295,29 @@ npm run cli
 6502> step 5
 6502> regs
 6502> mem 200 4
+```
+
+### Memory Manipulation
+
+The CLI provides commands to directly write to memory:
+
+```bash
+# Write multiple bytes at once
+6502> write 0200 A9 42 8D 00 02    # LDA #$42, STA $0200
+
+# Write single byte (poke)
+6502> poke 0300 FF                 # Write $FF to address $0300
+
+# View memory contents
+6502> mem 0200 8                   # Display 8 bytes from $0200
+
+# Create and test a simple program
+6502> write 0200 A9 01             # LDA #$01
+6502> write 0202 69 01             # ADC #$01  
+6502> write 0204 8D 00 03          # STA $0300
+6502> write 0207 4C 00 02          # JMP $0200
+6502> step 4                       # Execute 4 instructions
+6502> mem 0300 1                   # Check result
 ```
 
 ## Using Peripherals
