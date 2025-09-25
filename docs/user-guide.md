@@ -126,8 +126,8 @@ Once in the CLI, you can use these commands:
 
 **Debugging:**
 - `regs` - Show CPU registers and flags (P register shown in binary)
-- `mem <address> [length]` - Display memory contents
-- `write <address> <byte1> [byte2] ...` - Write multiple bytes to memory
+- `mem <address> [length]` or `m <address> [length]` - Display memory contents
+- `write <address> <byte1> [byte2] ...` or `w <address> <byte1> [byte2] ...` - Write multiple bytes to memory
 - `poke <address> <byte>` - Write single byte to memory
 - `regions` - Show memory regions (RAM, ROM, I/O)
 - `break <address>` - Set breakpoint
@@ -160,6 +160,7 @@ npm run cli
 6502> write 0200 A9 42 8D 00 02    # Write LDA #$42, STA $0200
 6502> poke 0205 EA                 # Write NOP instruction
 6502> mem 200 8                    # View written bytes
+6502> m 200 8                      # Same as above using alias
 6502> run 0200                     # Start execution from address 0x0200
 6502> stop                         # Stop execution
 6502> step 2                       # Step 2 instructions with register display
@@ -344,18 +345,20 @@ The CLI provides commands to directly write to memory:
 ```bash
 # Write multiple bytes at once
 6502> write 0200 A9 42 8D 00 02    # LDA #$42, STA $0200
+6502> w 0200 A9 42 8D 00 02        # Same as above using alias
 
 # Write single byte (poke)
 6502> poke 0300 FF                 # Write $FF to address $0300
 
 # View memory contents
 6502> mem 0200 8                   # Display 8 bytes from $0200
+6502> m 0200 8                     # Same as above using alias
 
 # Create and test a simple program
 6502> write 0200 A9 01             # LDA #$01
-6502> write 0202 69 01             # ADC #$01  
+6502> w 0202 69 01                 # ADC #$01 (using alias)
 6502> write 0204 8D 00 03          # STA $0300
-6502> write 0207 4C 00 02          # JMP $0200
+6502> w 0207 4C 00 02              # JMP $0200 (using alias)
 6502> run 0200                     # Start execution from 0x0200
 6502> stop                         # Stop after a moment
 6502> step 3                       # Step through 3 instructions

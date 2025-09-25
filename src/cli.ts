@@ -161,9 +161,23 @@ export class EmulatorCLI {
     });
 
     this.addCommand({
+      name: 'm',
+      description: 'Display memory contents (alias for mem)',
+      usage: 'm <address> [length]',
+      handler: this.handleMemory.bind(this)
+    });
+
+    this.addCommand({
       name: 'write',
       description: 'Write byte(s) to memory',
       usage: 'write <address> <byte1> [byte2] [byte3] ...',
+      handler: this.handleWrite.bind(this)
+    });
+
+    this.addCommand({
+      name: 'w',
+      description: 'Write byte(s) to memory (alias for write)',
+      usage: 'w <address> <byte1> [byte2] [byte3] ...',
       handler: this.handleWrite.bind(this)
     });
 
