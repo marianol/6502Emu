@@ -1,4 +1,4 @@
-# 6502 Emulator User Guide
+# 6502 Emulator User Guide v1.0
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@
 
 ## Introduction
 
-The 6502 Emulator is a cycle-accurate emulator designed for homebrew computer development. It provides:
+The 6502 Emulator v1.0 is a cycle-accurate emulator designed for homebrew computer development. It provides:
 
 - Accurate 6502/65C02 CPU emulation using the fake6502 core
 - Configurable memory mapping for RAM, ROM, and I/O
@@ -129,6 +129,9 @@ Once in the CLI, you can use these commands:
 
 **Configuration:**
 - `speed <hz>` - Set clock speed in Hz
+
+**Utility:**
+- `version` - Show emulator version information
 
 **Help:**
 - `help [command]` - Show available commands or command details

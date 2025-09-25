@@ -46,7 +46,9 @@ export class EmulatorCLI {
    * Start the CLI
    */
   async start(): Promise<void> {
-    console.log('6502/65C02 Homebrew Computer Emulator');
+    // Get version from package.json
+    const packageJson = require('../package.json');
+    console.log(`6502/65C02 Homebrew Computer Emulator v${packageJson.version}`);
     console.log('Type "help" for available commands, "quit" to exit\n');
 
     // Initialize with default configuration
@@ -186,6 +188,13 @@ export class EmulatorCLI {
       description: 'Show memory regions',
       usage: 'regions',
       handler: this.handleRegions.bind(this)
+    });
+
+    this.addCommand({
+      name: 'version',
+      description: 'Show emulator version',
+      usage: 'version',
+      handler: this.handleVersion.bind(this)
     });
 
     this.addCommand({
@@ -560,6 +569,13 @@ export class EmulatorCLI {
   }
 
 
+
+  private handleVersion(): void {
+    const packageJson = require('../package.json');
+    console.log(`6502/65C02 Homebrew Computer Emulator v${packageJson.version}`);
+    console.log(`Description: ${packageJson.description}`);
+    console.log(`License: ${packageJson.license}`);
+  }
 
   private handleQuit(): void {
     console.log('Goodbye!');
