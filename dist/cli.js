@@ -33,7 +33,9 @@ class EmulatorCLI {
      * Start the CLI
      */
     async start() {
-        console.log('6502/65C02 Homebrew Computer Emulator');
+        // Get version from package.json
+        const packageJson = require('../package.json');
+        console.log(`6502/65C02 Homebrew Computer Emulator v${packageJson.version}`);
         console.log('Type "help" for available commands, "quit" to exit\n');
         // Initialize with default configuration
         try {
@@ -77,7 +79,7 @@ class EmulatorCLI {
         this.addCommand({
             name: 'run',
             description: 'Start continuous execution',
-            usage: 'run',
+            usage: 'run [address]',
             handler: this.handleRun.bind(this)
         });
         this.addCommand({
@@ -111,6 +113,18 @@ class EmulatorCLI {
             description: 'Show CPU registers',
             usage: 'regs',
             handler: this.handleRegisters.bind(this)
+        });
+        this.addCommand({
+            name: 'setpc',
+            description: 'Set program counter',
+            usage: 'setpc <address>',
+            handler: this.handleSetPC.bind(this)
+        });
+        this.addCommand({
+            name: 'setreg',
+            description: 'Set CPU register',
+            usage: 'setreg <register> <value>',
+            handler: this.handleSetRegister.bind(this)
         });
         this.addCommand({
             name: 'mem',
@@ -150,6 +164,18 @@ class EmulatorCLI {
             handler: this.handleSpeed.bind(this)
         });
         // Help and utility commands
+        this.addCommand({
+            name: 'regions',
+            description: 'Show memory regions',
+            usage: 'regions',
+            handler: this.handleRegions.bind(this)
+        });
+        this.addCommand({
+            name: 'version',
+            description: 'Show emulator version',
+            usage: 'version',
+            handler: this.handleVersion.bind(this)
+        });
         this.addCommand({
             name: 'help',
             description: 'Show available commands',
@@ -248,7 +274,19 @@ class EmulatorCLI {
         console.log(`Average IPS: ${Math.round(stats.averageIPS)}`);
         console.log(`Actual Clock: ${Math.round(stats.clockSpeed)} Hz`);
     }
-    handleRun() {
+    handleRun(args) {
+        // If address is provided, set PC to that address
+        if (args.length > 0) {
+            const address = parseInt(args[0], 16);
+            if (isNaN(address)) {
+                console.log('Invalid address format. Use hexadecimal (e.g., 0200)');
+                return;
+            }
+            const cpu = this.emulator.getSystemBus().getCPU();
+            const currentRegs = cpu.getRegisters();
+            cpu.setRegisters({ ...currentRegs, PC: address });
+            console.log(`Set PC to ${address.toString(16).toUpperCase().padStart(4, '0')}`);
+        }
         this.emulator.start();
         console.log('Execution started');
     }
@@ -269,14 +307,98 @@ class EmulatorCLI {
         try {
             for (let i = 0; i < count; i++) {
                 const cycles = this.emulator.step();
-                if (i === 0 || count <= 5) {
-                    const regs = this.emulator.getSystemBus().getCPU().getRegisters();
-                    console.log(`Step ${i + 1}: PC=${regs.PC.toString(16).toUpperCase().padStart(4, '0')} (${cycles} cycles)`);
+                const regs = this.emulator.getSystemBus().getCPU().getRegisters();
+                // Always show step info and registers
+                console.log(`Step ${i + 1}: PC=${regs.PC.toString(16).toUpperCase().padStart(4, '0')} (${cycles} cycles)`);
+                this.displayRegisters(regs);
+                // Add separator for multiple steps
+                if (count > 1 && i < count - 1) {
+                    console.log('---');
                 }
             }
         }
         catch (error) {
             console.error(`Step error: ${error}`);
+        }
+    }
+    displayRegisters(regs) {
+        console.log(`A:${regs.A.toString(16).toUpperCase().padStart(2, '0')} X:${regs.X.toString(16).toUpperCase().padStart(2, '0')} Y:${regs.Y.toString(16).toUpperCase().padStart(2, '0')} SP:${regs.SP.toString(16).toUpperCase().padStart(2, '0')} P:${regs.P.toString(2).padStart(8, '0')}`);
+        this.displayFlags(regs.P);
+    }
+    handleSetPC(args) {
+        if (args.length !== 1) {
+            console.log('Usage: setpc <address>');
+            console.log('Example: setpc 0200');
+            return;
+        }
+        const address = parseInt(args[0], 16);
+        if (isNaN(address) || address < 0 || address > 0xFFFF) {
+            console.log('Invalid address. Must be 0000-FFFF');
+            return;
+        }
+        const cpu = this.emulator.getSystemBus().getCPU();
+        const currentRegs = cpu.getRegisters();
+        cpu.setRegisters({ ...currentRegs, PC: address });
+        console.log(`PC set to ${address.toString(16).toUpperCase().padStart(4, '0')}`);
+    }
+    handleSetRegister(args) {
+        if (args.length !== 2) {
+            console.log('Usage: setreg <register> <value>');
+            console.log('Registers: A, X, Y, SP, P');
+            console.log('Examples: setreg A 42, setreg P 20, setreg SP FF');
+            return;
+        }
+        const register = args[0].toUpperCase();
+        const value = parseInt(args[1], 16);
+        if (isNaN(value) || value < 0 || value > 0xFF) {
+            console.log('Invalid value. Must be 00-FF');
+            return;
+        }
+        const cpu = this.emulator.getSystemBus().getCPU();
+        const currentRegs = cpu.getRegisters();
+        switch (register) {
+            case 'A':
+                cpu.setRegisters({ ...currentRegs, A: value });
+                console.log(`A set to ${value.toString(16).toUpperCase().padStart(2, '0')}`);
+                break;
+            case 'X':
+                cpu.setRegisters({ ...currentRegs, X: value });
+                console.log(`X set to ${value.toString(16).toUpperCase().padStart(2, '0')}`);
+                break;
+            case 'Y':
+                cpu.setRegisters({ ...currentRegs, Y: value });
+                console.log(`Y set to ${value.toString(16).toUpperCase().padStart(2, '0')}`);
+                break;
+            case 'SP':
+                cpu.setRegisters({ ...currentRegs, SP: value });
+                console.log(`SP set to ${value.toString(16).toUpperCase().padStart(2, '0')}`);
+                break;
+            case 'P':
+                cpu.setRegisters({ ...currentRegs, P: value });
+                console.log(`P set to ${value.toString(16).toUpperCase().padStart(2, '0')}`);
+                // Show decoded flags
+                const flags = [];
+                if (value & 0x80)
+                    flags.push('N');
+                if (value & 0x40)
+                    flags.push('V');
+                if (value & 0x20)
+                    flags.push('-');
+                if (value & 0x10)
+                    flags.push('B');
+                if (value & 0x08)
+                    flags.push('D');
+                if (value & 0x04)
+                    flags.push('I');
+                if (value & 0x02)
+                    flags.push('Z');
+                if (value & 0x01)
+                    flags.push('C');
+                console.log(`Flags: ${flags.join('')}`);
+                break;
+            default:
+                console.log('Invalid register. Use: A, X, Y, SP, or P');
+                return;
         }
     }
     async handleLoadROM(args) {
@@ -300,13 +422,23 @@ class EmulatorCLI {
             return;
         }
         try {
-            const memory = this.emulator.getSystemBus().getMemory();
-            const loadedROM = await memory.loadROMFromFile({
-                file,
-                loadAddress: address,
-                format: format
-            });
-            console.log(`ROM loaded: ${file} at ${loadedROM.loadAddress.toString(16).toUpperCase().padStart(4, '0')} (${loadedROM.data.length} bytes)`);
+            // For binary format, load directly to avoid async issues
+            if (format === 'binary') {
+                const data = fs_1.default.readFileSync(file);
+                const memory = this.emulator.getSystemBus().getMemory();
+                memory.loadROM(data, address);
+                console.log(`ROM loaded: ${file} at ${address.toString(16).toUpperCase().padStart(4, '0')} (${data.length} bytes)`);
+            }
+            else {
+                // Use async method for other formats
+                const memory = this.emulator.getSystemBus().getMemory();
+                const loadedROM = await memory.loadROMFromFile({
+                    file,
+                    loadAddress: address,
+                    format: format
+                });
+                console.log(`ROM loaded: ${file} at ${loadedROM.loadAddress.toString(16).toUpperCase().padStart(4, '0')} (${loadedROM.data.length} bytes)`);
+            }
         }
         catch (error) {
             console.error(`Failed to load ROM: ${error}`);
@@ -315,27 +447,43 @@ class EmulatorCLI {
     handleRegisters() {
         const regs = this.emulator.getSystemBus().getCPU().getRegisters();
         console.log(`A:  ${regs.A.toString(16).toUpperCase().padStart(2, '0')}    X:  ${regs.X.toString(16).toUpperCase().padStart(2, '0')}    Y:  ${regs.Y.toString(16).toUpperCase().padStart(2, '0')}`);
-        console.log(`PC: ${regs.PC.toString(16).toUpperCase().padStart(4, '0')}  SP: ${regs.SP.toString(16).toUpperCase().padStart(2, '0')}    P:  ${regs.P.toString(16).toUpperCase().padStart(2, '0')}`);
+        console.log(`PC: ${regs.PC.toString(16).toUpperCase().padStart(4, '0')}  SP: ${regs.SP.toString(16).toUpperCase().padStart(2, '0')}    P:  ${regs.P.toString(2).padStart(8, '0')}`);
         console.log(`Cycles: ${regs.cycles}`);
-        // Decode status flags
+        // Use the same flag display as step command
+        this.displayFlags(regs.P);
+    }
+    displayFlags(statusReg) {
         const flags = [];
-        if (regs.P & 0x80)
+        if (statusReg & 0x80)
             flags.push('N');
-        if (regs.P & 0x40)
+        else
+            flags.push('n'); // Bit 7: Negative
+        if (statusReg & 0x40)
             flags.push('V');
-        if (regs.P & 0x20)
-            flags.push('-');
-        if (regs.P & 0x10)
+        else
+            flags.push('v'); // Bit 6: Overflow
+        flags.push('-'); // Bit 5: Unused (always 1)
+        if (statusReg & 0x10)
             flags.push('B');
-        if (regs.P & 0x08)
+        else
+            flags.push('b'); // Bit 4: Break
+        if (statusReg & 0x08)
             flags.push('D');
-        if (regs.P & 0x04)
+        else
+            flags.push('d'); // Bit 3: Decimal
+        if (statusReg & 0x04)
             flags.push('I');
-        if (regs.P & 0x02)
+        else
+            flags.push('i'); // Bit 2: Interrupt
+        if (statusReg & 0x02)
             flags.push('Z');
-        if (regs.P & 0x01)
+        else
+            flags.push('z'); // Bit 1: Zero
+        if (statusReg & 0x01)
             flags.push('C');
-        console.log(`Flags: ${flags.join('')}`);
+        else
+            flags.push('c'); // Bit 0: Carry
+        console.log(`Flags: ${flags.join('')} (NV-BDIZC)`);
     }
     handleMemory(args) {
         if (args.length < 1 || args.length > 2) {
@@ -466,6 +614,21 @@ class EmulatorCLI {
                 console.log(`Unknown command: ${commandName}`);
             }
         }
+    }
+    handleRegions() {
+        const memory = this.emulator.getSystemBus().getMemory();
+        const regions = memory.getMemoryMap();
+        console.log(`Memory Regions (${regions.length} total):`);
+        regions.forEach((region, index) => {
+            console.log(`  ${index}: ${region.type}: ${region.start.toString(16).toUpperCase().padStart(4, '0')}-${region.end.toString(16).toUpperCase().padStart(4, '0')}`);
+        });
+    }
+    handleVersion() {
+        const packageJson = require('../package.json');
+        console.log(`6502/65C02 Homebrew Computer Emulator v${packageJson.version}`);
+        console.log(`Author: ${packageJson.author}`);
+        console.log(`Description: ${packageJson.description}`);
+        console.log(`License: ${packageJson.license}`);
     }
     handleQuit() {
         console.log('Goodbye!');

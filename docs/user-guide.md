@@ -88,6 +88,12 @@ setTimeout(() => {
 The emulator includes a comprehensive CLI for interactive use:
 
 ```bash
+# Run using the launcher script (recommended)
+bin/6502-emulator
+
+# Or if installed globally
+6502-emulator
+
 # Run CLI in development mode
 npm run cli
 

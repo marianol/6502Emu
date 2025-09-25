@@ -337,7 +337,7 @@ endif
 
 quiet_cmd_regen_makefile = ACTION Regenerating $@
 cmd_regen_makefile = cd $(srcdir); /Users/marianol/Workspace/6502Emu/node_modules/node-gyp/gyp/gyp_main.py -fmake --ignore-environment "-Dlibrary=shared_library" "-Dvisibility=default" "-Dnode_root_dir=/Users/marianol/Library/Caches/node-gyp/18.20.8" "-Dnode_gyp_dir=/Users/marianol/Workspace/6502Emu/node_modules/node-gyp" "-Dnode_lib_file=/Users/marianol/Library/Caches/node-gyp/18.20.8/<(target_arch)/node.lib" "-Dmodule_root_dir=/Users/marianol/Workspace/6502Emu" "-Dnode_engine=v8" "--depth=." "-Goutput_dir=." "--generator-output=build" -I/Users/marianol/Workspace/6502Emu/build/config.gypi -I/Users/marianol/Workspace/6502Emu/node_modules/node-gyp/addon.gypi -I/Users/marianol/Library/Caches/node-gyp/18.20.8/include/node/common.gypi "--toplevel-dir=." binding.gyp
-Makefile: $(srcdir)/build/config.gypi $(srcdir)/binding.gyp $(srcdir)/node_modules/node-gyp/addon.gypi $(srcdir)/../../Library/Caches/node-gyp/18.20.8/include/node/common.gypi $(srcdir)/node_modules/node-addon-api/node_api.gyp
+Makefile: $(srcdir)/node_modules/node-addon-api/node_api.gyp $(srcdir)/node_modules/node-gyp/addon.gypi $(srcdir)/build/config.gypi $(srcdir)/../../Library/Caches/node-gyp/18.20.8/include/node/common.gypi $(srcdir)/binding.gyp
 	$(call do_cmd,regen_makefile)
 
 # "all" is a concatenation of the "all" targets from all the included

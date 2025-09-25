@@ -39,8 +39,12 @@ export declare class EmulatorCLI {
     private handleStop;
     private handlePause;
     private handleStep;
+    private displayRegisters;
+    private handleSetPC;
+    private handleSetRegister;
     private handleLoadROM;
     private handleRegisters;
+    private displayFlags;
     private handleMemory;
     private handleWrite;
     private handlePoke;
@@ -48,6 +52,8 @@ export declare class EmulatorCLI {
     private handleUnbreakpoint;
     private handleSpeed;
     private handleHelp;
+    private handleRegions;
+    private handleVersion;
     private handleQuit;
 }
 /**

@@ -1,26 +1,181 @@
 #!/usr/bin/env node
 
-// Simple wrapper to run the CLI
+/**
+ * 6502/65C02 Homebrew Computer Emulator CLI Launcher
+ * Self-contained script that can be run from anywhere
+ */
+
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 
-// Check if we have a built version
-const distPath = path.join(__dirname, '..', 'dist', 'cli.js');
-const srcPath = path.join(__dirname, '..', 'src', 'cli.ts');
+// Determine the project root directory (where this script is located)
+const scriptDir = __dirname;
+const projectRoot = path.resolve(scriptDir, '..');
 
-const fs = require('fs');
+// Define paths relative to project root
+const distPath = path.join(projectRoot, 'dist', 'cli.js');
+const srcPath = path.join(projectRoot, 'src', 'cli.ts');
+const packageJsonPath = path.join(projectRoot, 'package.json');
 
-if (fs.existsSync(distPath)) {
-  // Use built version
-  require(distPath);
-} else {
-  // Use ts-node for development
-  const tsNode = spawn('npx', ['ts-node', srcPath], {
+// Check if we're in a valid 6502-emulator project directory
+if (!fs.existsSync(packageJsonPath)) {
+  console.error('Error: Cannot find 6502-emulator project files.');
+  console.error('Make sure this script is in the bin/ directory of the 6502-emulator project.');
+  process.exit(1);
+}
+
+// Try to read package.json to verify this is the right project
+try {
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  if (packageJson.name !== '6502-homebrew-emulator') {
+    console.error('Error: This does not appear to be the 6502-homebrew-emulator project.');
+    process.exit(1);
+  }
+} catch (error) {
+  console.error('Error: Cannot read package.json:', error.message);
+  process.exit(1);
+}
+
+// Function to run the CLI
+function runCLI() {
+  // Check if built version exists and is newer than source
+  if (fs.existsSync(distPath)) {
+    try {
+      // Get file modification times
+      const distStat = fs.statSync(distPath);
+      const srcStat = fs.existsSync(srcPath) ? fs.statSync(srcPath) : null;
+      
+      // If source is newer than dist, suggest rebuilding
+      if (srcStat && srcStat.mtime > distStat.mtime) {
+        console.warn('Warning: Source files are newer than built files. Consider running "npm run build".');
+      }
+      
+      // Run the built version by spawning it as a separate process
+      console.log('Starting 6502/65C02 Emulator (built version)...');
+      const cliProcess = spawn('node', [distPath], {
+        stdio: 'inherit',
+        cwd: projectRoot
+      });
+      
+      cliProcess.on('exit', (code) => {
+        process.exit(code || 0);
+      });
+      
+      cliProcess.on('error', (error) => {
+        console.error('Error starting built version:', error.message);
+        console.log('Falling back to development mode...');
+        runDevMode();
+      });
+      return;
+    } catch (error) {
+      console.warn('Warning: Built version failed to load:', error.message);
+      console.log('Falling back to development mode...');
+    }
+  }
+  
+  // Fall back to development mode
+  runDevMode();
+}
+
+// Function to run in development mode using ts-node
+function runDevMode() {
+  if (fs.existsSync(srcPath)) {
+    console.log('Starting 6502/65C02 Emulator (development mode)...');
+    
+    // Check if ts-node is available
+    const tsNode = spawn('npx', ['ts-node', '--version'], {
+      stdio: 'pipe',
+      cwd: projectRoot
+    });
+    
+    tsNode.on('error', (error) => {
+      console.error('Error: ts-node is not available. Please install dependencies with "npm install" or build the project with "npm run build".');
+      process.exit(1);
+    });
+    
+    tsNode.on('close', (code) => {
+      if (code === 0) {
+        // ts-node is available, run the TypeScript source
+        const cliProcess = spawn('npx', ['ts-node', srcPath], {
+          stdio: 'inherit',
+          cwd: projectRoot
+        });
+        
+        cliProcess.on('exit', (code) => {
+          process.exit(code || 0);
+        });
+        
+        cliProcess.on('error', (error) => {
+          console.error('Error starting emulator:', error.message);
+          process.exit(1);
+        });
+      } else {
+        console.error('Error: Cannot start emulator. Please run "npm install" to install dependencies or "npm run build" to build the project.');
+        process.exit(1);
+      }
+    });
+  } else {
+    console.error('Error: Cannot find emulator source files.');
+    console.error('Please make sure you are running this script from a complete 6502-emulator installation.');
+    process.exit(1);
+  }
+}
+
+// Handle command line arguments
+const args = process.argv.slice(2);
+
+if (args.includes('--help') || args.includes('-h')) {
+  console.log('6502/65C02 Homebrew Computer Emulator');
+  console.log('');
+  console.log('Usage: 6502-emulator [options]');
+  console.log('');
+  console.log('Options:');
+  console.log('  --help, -h     Show this help message');
+  console.log('  --version, -v  Show version information');
+  console.log('  --build        Build the project before running');
+  console.log('');
+  console.log('This script will automatically use the built version if available,');
+  console.log('or fall back to development mode using ts-node.');
+  console.log('');
+  console.log('For more information, visit: https://github.com/marianol/6502Emu');
+  process.exit(0);
+}
+
+if (args.includes('--version') || args.includes('-v')) {
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    console.log(`6502/65C02 Homebrew Computer Emulator v${packageJson.version}`);
+    console.log(`Author: ${packageJson.author}`);
+    console.log(`License: ${packageJson.license}`);
+  } catch (error) {
+    console.error('Error reading version information:', error.message);
+  }
+  process.exit(0);
+}
+
+if (args.includes('--build')) {
+  console.log('Building project...');
+  const buildProcess = spawn('npm', ['run', 'build'], {
     stdio: 'inherit',
-    cwd: path.join(__dirname, '..')
+    cwd: projectRoot
   });
   
-  tsNode.on('exit', (code) => {
-    process.exit(code);
+  buildProcess.on('exit', (code) => {
+    if (code === 0) {
+      console.log('Build completed successfully.');
+      runCLI();
+    } else {
+      console.error('Build failed.');
+      process.exit(code || 1);
+    }
   });
+  
+  buildProcess.on('error', (error) => {
+    console.error('Error running build:', error.message);
+    process.exit(1);
+  });
+} else {
+  // Run the CLI normally
+  runCLI();
 }

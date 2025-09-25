@@ -49,21 +49,49 @@ A cycle-accurate 6502/65C02 emulator designed for homebrew computer development,
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd 6502-homebrew-emulator
+git clone https://github.com/marianol/6502Emu.git
+cd 6502Emu
 
 # Install dependencies
 npm install
 
-# Build the project
+# Build the project (optional - launcher will use development mode if not built)
 npm run build
+```
+
+### Global Installation
+
+To use the emulator from anywhere on your system:
+
+```bash
+# Option 1: Add to PATH (recommended)
+echo 'export PATH="$PATH:/path/to/6502Emu/bin"' >> ~/.zshrc
+source ~/.zshrc
+
+# Option 2: Create symbolic link
+sudo ln -s /path/to/6502Emu/bin/6502-emulator /usr/local/bin/6502-emulator
+
+# Option 3: Copy script to PATH location
+sudo cp bin/6502-emulator /usr/local/bin/6502-emulator
+```
+
+After installation, you can run the emulator from anywhere:
+```bash
+6502-emulator --help
+6502-emulator --version
+6502-emulator
 ```
 
 ### Basic Usage
 
 ```bash
-# Start the interactive CLI
+# Start the interactive CLI (if installed globally)
+6502-emulator
+
+# Or run from project directory
 npm run cli
+# or
+bin/6502-emulator
 
 # Load a configuration and ROM
 6502> load examples/basic-homebrew-config.json
@@ -75,6 +103,16 @@ npm run cli
 6502> step 5
 6502> quit
 ```
+
+### Launcher Script Features
+
+The `bin/6502-emulator` script provides:
+- **Self-contained execution** - works from any directory
+- **Automatic fallback** - uses built version if available, otherwise development mode
+- **Built-in help** - `--help` for usage information
+- **Version display** - `--version` for version information
+- **Auto-build option** - `--build` to build before running
+- **Error handling** - clear error messages and troubleshooting guidance
 
 ### Example Session
 
