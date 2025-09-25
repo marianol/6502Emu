@@ -31,6 +31,8 @@ export class EmulatorCLI {
   private running: boolean = true;
   private lastMemoryAddress: number = 0;
   private lastMemoryLength: number = 16;
+  private lastDisasmAddress: number = 0;
+  private lastDisasmLength: number = 32;
   private lastCommand: string = '';
 
   constructor() {
@@ -192,6 +194,20 @@ export class EmulatorCLI {
     });
 
     this.addCommand({
+      name: 'disasm',
+      description: 'Disassemble memory contents',
+      usage: 'disasm [address] [length] (press return to continue)',
+      handler: this.handleDisasm.bind(this)
+    });
+
+    this.addCommand({
+      name: 'd',
+      description: 'Disassemble memory contents (alias for disasm)',
+      usage: 'd [address] [length] (press return to continue)',
+      handler: this.handleDisasm.bind(this)
+    });
+
+    this.addCommand({
       name: 'break',
       description: 'Set breakpoint',
       usage: 'break <address>',
@@ -262,6 +278,8 @@ export class EmulatorCLI {
         // Empty input - continue memory display if last command was mem or m
         if (this.lastCommand === 'mem' || this.lastCommand === 'm') {
           this.handleMemory([]);
+        } else if (this.lastCommand === 'disasm' || this.lastCommand === 'd') {
+          this.handleDisasm([]);
         }
       }
       if (this.running) {
@@ -588,6 +606,99 @@ export class EmulatorCLI {
     // Update last memory address for continuation
     this.lastMemoryAddress = address + length;
     this.lastMemoryLength = length;
+  }
+
+  private handleDisasm(args: string[]): void {
+    let address: number;
+    let length: number;
+
+    if (args.length === 0) {
+      // Continue from last address if no arguments provided
+      address = this.lastDisasmAddress;
+      length = this.lastDisasmLength;
+    } else if (args.length === 1) {
+      address = parseInt(args[0], 16);
+      length = 32; // Default length for disassembly (covers ~10-16 instructions)
+      if (isNaN(address)) {
+        console.log('Invalid address');
+        return;
+      }
+    } else if (args.length === 2) {
+      address = parseInt(args[0], 16);
+      length = parseInt(args[1]);
+      if (isNaN(address) || isNaN(length)) {
+        console.log('Invalid address or length');
+        return;
+      }
+    } else {
+      console.log('Usage: disasm [address] [length]');
+      return;
+    }
+
+    const inspector = this.emulator.getMemoryInspector();
+    const disassembly = inspector.dumpMemory(address, length, 'disasm');
+    console.log(disassembly);
+
+    // Update last disassembly address for continuation
+    // For disassembly, we need to calculate the actual end address based on instruction lengths
+    const lines = disassembly.split('\n').filter(line => line.trim());
+    if (lines.length > 0) {
+      const lastLine = lines[lines.length - 1];
+      const match = lastLine.match(/^([0-9A-F]{4}):/);
+      if (match) {
+        const lastInstructionAddr = parseInt(match[1], 16);
+        // Estimate instruction length from the last instruction
+        const opcodeMatch = lastLine.match(/: ([0-9A-F]{2})/);
+        if (opcodeMatch) {
+          const opcode = parseInt(opcodeMatch[1], 16);
+          const instrLength = this.getInstructionLength(opcode);
+          this.lastDisasmAddress = lastInstructionAddr + instrLength;
+        } else {
+          this.lastDisasmAddress = lastInstructionAddr + 1;
+        }
+      } else {
+        this.lastDisasmAddress = address + length;
+      }
+    } else {
+      this.lastDisasmAddress = address + length;
+    }
+    
+    this.lastDisasmLength = length;
+  }
+
+  // Helper method to get instruction length (simplified version)
+  private getInstructionLength(opcode: number): number {
+    // Simplified instruction length lookup - matches the one in memory-inspector.ts
+    const lengths: { [key: number]: number } = {
+      // Implied/Accumulator (1 byte)
+      0x00: 1, 0x08: 1, 0x0A: 1, 0x18: 1, 0x28: 1, 0x2A: 1, 0x38: 1, 0x40: 1,
+      0x48: 1, 0x4A: 1, 0x58: 1, 0x60: 1, 0x68: 1, 0x6A: 1, 0x78: 1, 0x88: 1,
+      0x8A: 1, 0x98: 1, 0x9A: 1, 0xA8: 1, 0xAA: 1, 0xB8: 1, 0xBA: 1, 0xC8: 1,
+      0xCA: 1, 0xD8: 1, 0xE8: 1, 0xEA: 1, 0xF8: 1,
+      
+      // Immediate/Zero Page/Relative (2 bytes)
+      0x01: 2, 0x05: 2, 0x06: 2, 0x09: 2, 0x10: 2, 0x11: 2, 0x15: 2, 0x16: 2,
+      0x19: 2, 0x21: 2, 0x24: 2, 0x25: 2, 0x26: 2, 0x29: 2, 0x30: 2, 0x31: 2,
+      0x35: 2, 0x36: 2, 0x39: 2, 0x41: 2, 0x45: 2, 0x46: 2, 0x49: 2, 0x50: 2,
+      0x51: 2, 0x55: 2, 0x56: 2, 0x59: 2, 0x61: 2, 0x65: 2, 0x66: 2, 0x69: 2,
+      0x70: 2, 0x71: 2, 0x75: 2, 0x76: 2, 0x79: 2, 0x81: 2, 0x84: 2, 0x85: 2,
+      0x86: 2, 0x90: 2, 0x91: 2, 0x94: 2, 0x95: 2, 0x96: 2, 0xA0: 2, 0xA1: 2,
+      0xA2: 2, 0xA4: 2, 0xA5: 2, 0xA6: 2, 0xA9: 2, 0xB0: 2, 0xB1: 2, 0xB4: 2,
+      0xB5: 2, 0xB6: 2, 0xB9: 2, 0xC0: 2, 0xC1: 2, 0xC4: 2, 0xC5: 2, 0xC6: 2,
+      0xC9: 2, 0xD0: 2, 0xD1: 2, 0xD5: 2, 0xD6: 2, 0xD9: 2, 0xE0: 2, 0xE1: 2,
+      0xE4: 2, 0xE5: 2, 0xE6: 2, 0xE9: 2, 0xF0: 2, 0xF1: 2, 0xF5: 2, 0xF6: 2,
+      0xF9: 2,
+      
+      // Absolute (3 bytes)
+      0x0D: 3, 0x0E: 3, 0x1D: 3, 0x1E: 3, 0x20: 3, 0x2C: 3, 0x2D: 3, 0x2E: 3,
+      0x3D: 3, 0x3E: 3, 0x4C: 3, 0x4D: 3, 0x4E: 3, 0x5D: 3, 0x5E: 3, 0x6C: 3,
+      0x6D: 3, 0x6E: 3, 0x7D: 3, 0x7E: 3, 0x8C: 3, 0x8D: 3, 0x8E: 3, 0x99: 3,
+      0x9D: 3, 0xAC: 3, 0xAD: 3, 0xAE: 3, 0xBC: 3, 0xBD: 3, 0xBE: 3, 0xCC: 3,
+      0xCD: 3, 0xCE: 3, 0xDD: 3, 0xDE: 3, 0xEC: 3, 0xED: 3, 0xEE: 3, 0xFD: 3,
+      0xFE: 3
+    };
+    
+    return lengths[opcode] || 1;
   }
 
   private handleWrite(args: string[]): void {

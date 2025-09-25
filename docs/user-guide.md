@@ -127,6 +127,7 @@ Once in the CLI, you can use these commands:
 **Debugging:**
 - `regs` - Show CPU registers and flags (P register shown in binary)
 - `mem [address] [length]` or `m [address] [length]` - Display memory contents (press return to continue)
+- `disasm [address] [length]` or `d [address] [length]` - Disassemble memory contents (press return to continue)
 - `write <address> <byte1> [byte2] ...` or `w <address> <byte1> [byte2] ...` - Write multiple bytes to memory
 - `poke <address> <byte>` - Write single byte to memory
 - `regions` - Show memory regions (RAM, ROM, I/O)
@@ -357,6 +358,11 @@ The CLI provides commands to directly write to and read from memory:
 6502> [press return]               # Continue to next 16 bytes (0x0210)
 6502> [press return]               # Continue to next 16 bytes (0x0220)
 
+# Disassemble memory contents
+6502> disasm 0200 32               # Disassemble 32 bytes from $0200
+6502> d 0200                       # Same using alias (default 32 bytes)
+6502> [press return]               # Continue disassembly from next instruction
+
 # Create and test a simple program
 6502> write 0200 A9 01             # LDA #$01
 6502> w 0202 69 01                 # ADC #$01 (using alias)
@@ -393,12 +399,35 @@ The memory commands support continuation - after using `mem` or `m`, you can pre
 
 This continuation only works after memory commands - other commands will break the sequence.
 
-# Advanced debugging with register manipulation
-6502> setpc 0200                   # Set program counter to 0x0200
-6502> setreg A 10                  # Set accumulator to 0x10
-6502> setreg P 83                  # Set flags (N=1, Z=1, C=1)
-6502> regs                         # View all registers
-6502> step 1                       # Execute one instruction
+### Code Disassembly
+
+The disassembler shows 6502 assembly instructions with addresses and opcodes:
+
+```bash
+6502> d 0200                       # Disassemble starting at $0200
+0200: A9 42   LDA #$nn             # Load accumulator with immediate value
+0202: 8D 0300 STA $nnnn            # Store accumulator to absolute address
+0205: A9 01   LDA #$nn             # Load accumulator with immediate value
+0207: 69 01   ADC #$nn             # Add with carry immediate
+0209: 8D 0301 STA $nnnn            # Store accumulator to absolute address
+020C: 4C 0200 JMP $nnnn            # Jump to absolute address
+6502> [press return]               # Continue from next instruction
+020F: 00      BRK                  # Break instruction
+0210: 00      BRK                  # Break instruction
+...
+```
+
+Like memory browsing, disassembly supports continuation by pressing return.
+
+# Advanced debugging with disassembly and execution
+6502> d 0200                       # See what code will execute
+0200: A9 42   LDA #$nn             # Load $42 into accumulator
+0202: 8D 0300 STA $nnnn            # Store to $0300
+6502> setpc 0200                   # Set program counter to start of code
+6502> step 1                       # Execute LDA #$42
+6502> regs                         # Check that A register = $42
+6502> step 1                       # Execute STA $0300
+6502> m 0300 1                     # Verify $42 was stored to $0300
 ```
 
 ## Using Peripherals

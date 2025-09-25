@@ -13,6 +13,8 @@ export declare class EmulatorCLI {
     private running;
     private lastMemoryAddress;
     private lastMemoryLength;
+    private lastDisasmAddress;
+    private lastDisasmLength;
     private lastCommand;
     constructor();
     /**
@@ -49,6 +51,8 @@ export declare class EmulatorCLI {
     private handleRegisters;
     private displayFlags;
     private handleMemory;
+    private handleDisasm;
+    private getInstructionLength;
     private handleWrite;
     private handlePoke;
     private handleBreakpoint;
