@@ -1,0 +1,61 @@
+{
+  "name": "Basic Homebrew Computer",
+  "description": "Simple 6502-based homebrew computer with ACIA and VIA",
+  "cpu": {
+    "type": "6502",
+    "clockSpeed": 1000000
+  },
+  "memory": {
+    "ramSize": 32768,
+    "ramStart": 0,
+    "romImages": [
+      {
+        "file": "monitor.bin",
+        "loadAddress": 57344,
+        "format": "binary",
+        "description": "System monitor ROM"
+      }
+    ]
+  },
+  "peripherals": {
+    "acia": {
+      "baseAddress": 20480,
+      "baudRate": 9600,
+      "description": "Serial communication interface"
+    },
+    "via": {
+      "baseAddress": 24576,
+      "enableTimers": true,
+      "portAConnections": [
+        {
+          "pin": 0,
+          "device": "LED",
+          "type": "output"
+        },
+        {
+          "pin": 1,
+          "device": "LED",
+          "type": "output"
+        }
+      ],
+      "portBConnections": [
+        {
+          "pin": 0,
+          "device": "Button",
+          "type": "input"
+        },
+        {
+          "pin": 1,
+          "device": "Button",
+          "type": "input"
+        }
+      ],
+      "description": "Versatile interface adapter for I/O"
+    }
+  },
+  "debugging": {
+    "enableTracing": false,
+    "breakOnReset": false,
+    "symbolFile": null
+  }
+}

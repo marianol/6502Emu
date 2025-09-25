@@ -11,6 +11,8 @@ import { ACIA68B50 } from './peripherals/acia';
 import { VIA65C22Implementation } from './peripherals/via';
 import { CC65SymbolParser } from './cc65/symbol-parser';
 import { CC65MemoryConfigurator } from './cc65/memory-layout';
+import { EmulatorProfiler } from './performance/profiler';
+import { EmulatorOptimizer, ExecutionSpeedController } from './performance/optimizer';
 
 /**
  * Execution state of the emulator
@@ -46,6 +48,11 @@ export class Emulator {
   private symbolParser?: CC65SymbolParser;
   private memoryLayout?: any; // Will be a layout object from CC65MemoryConfigurator
   
+  // Performance optimization
+  private profiler: EmulatorProfiler;
+  private optimizer: EmulatorOptimizer;
+  private speedController: ExecutionSpeedController;
+  
   // Execution control
   private executionTimer?: NodeJS.Timeout;
   private targetClockSpeed: number = 1000000; // 1MHz default
@@ -65,6 +72,12 @@ export class Emulator {
 
   constructor(config?: SystemConfig) {
     this.config = config || SystemConfigLoader.getDefaultConfig();
+    
+    // Initialize performance components
+    this.profiler = new EmulatorProfiler();
+    this.optimizer = new EmulatorOptimizer();
+    this.speedController = this.optimizer.getSpeedController();
+    
     this.systemBus = new SystemBus();
     this.memoryInspector = new MemoryInspectorImpl(this.systemBus.getMemory());
     this.debugInspector = new DebugInspectorImpl(
@@ -74,6 +87,7 @@ export class Emulator {
     );
     
     this.targetClockSpeed = this.config.cpu.clockSpeed;
+    this.speedController.setTargetSpeed(this.targetClockSpeed);
     this.calculateCyclesPerTick();
   }
 
@@ -308,11 +322,14 @@ export class Emulator {
     }
     
     try {
+      const chunkStartTime = performance.now();
       let cyclesExecuted = 0;
       
       // Execute cycles in chunks for better performance
       while (cyclesExecuted < this.cyclesPerTick && this.state === EmulatorState.RUNNING) {
+        const stepStartTime = this.profiler.startTiming();
         const cycles = this.systemBus.step();
+        this.profiler.endTiming(stepStartTime, 'cpu_step');
         
         // Check if execution was halted due to breakpoint (0 cycles returned)
         if (cycles === 0) {
@@ -327,15 +344,28 @@ export class Emulator {
         this.stats.instructionsExecuted++;
       }
       
+      // Update speed controller
+      const chunkTime = performance.now() - chunkStartTime;
+      this.speedController.updateActualSpeed(cyclesExecuted, chunkTime);
+      
+      // Calculate delay for speed control
+      const delay = this.speedController.calculateDelay(cyclesExecuted, chunkTime);
+      
       // Update statistics periodically
       const now = Date.now();
       if (now - this.lastStatsUpdate > 1000) {
         this.updateStats();
         this.lastStatsUpdate = now;
+        
+        // Apply optimizations based on profiling data
+        if (this.profiler.getMetrics().instructionCount > 10000) {
+          const analysis = this.profiler.getAnalysis();
+          this.optimizer.applyOptimizations(analysis);
+        }
       }
       
-      // Schedule next execution
-      this.scheduleExecution();
+      // Schedule next execution with speed control delay
+      setTimeout(() => this.scheduleExecution(), delay);
       
     } catch (error) {
       this.state = EmulatorState.ERROR;
@@ -347,9 +377,7 @@ export class Emulator {
    * Calculate cycles per tick based on target clock speed
    */
   private calculateCyclesPerTick(): void {
-    // Aim for ~60 FPS (16.67ms intervals)
-    const targetInterval = 16.67;
-    this.cyclesPerTick = Math.max(1, Math.floor((this.targetClockSpeed * targetInterval) / 1000));
+    this.cyclesPerTick = this.speedController.getCyclesPerChunk();
   }
 
   /**
@@ -445,7 +473,52 @@ export class Emulator {
    */
   setClockSpeed(speed: number): void {
     this.targetClockSpeed = speed;
+    this.speedController.setTargetSpeed(speed);
     this.calculateCyclesPerTick();
+  }
+
+  /**
+   * Enable/disable performance profiling
+   */
+  enableProfiling(enabled: boolean): void {
+    if (enabled) {
+      this.profiler.enable();
+    } else {
+      this.profiler.disable();
+    }
+  }
+
+  /**
+   * Get performance profiler
+   */
+  getProfiler(): EmulatorProfiler {
+    return this.profiler;
+  }
+
+  /**
+   * Get performance optimizer
+   */
+  getOptimizer(): EmulatorOptimizer {
+    return this.optimizer;
+  }
+
+  /**
+   * Set adaptive speed control
+   */
+  setAdaptiveSpeed(enabled: boolean): void {
+    this.speedController.setAdaptiveMode(enabled);
+  }
+
+  /**
+   * Get performance statistics
+   */
+  getPerformanceStats(): any {
+    return {
+      emulator: this.getStats(),
+      profiler: this.profiler.getMetrics(),
+      optimizer: this.optimizer.getStats(),
+      analysis: this.profiler.getAnalysis()
+    };
   }
 
   /**

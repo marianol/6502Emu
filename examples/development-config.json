@@ -1,0 +1,108 @@
+{
+  "name": "Development System",
+  "description": "Configuration optimized for software development and debugging",
+  "cpu": {
+    "type": "65C02",
+    "clockSpeed": 2000000
+  },
+  "memory": {
+    "ramSize": 32768,
+    "ramStart": 0,
+    "romImages": [
+      {
+        "file": "debug-monitor.bin",
+        "loadAddress": 49152,
+        "format": "binary",
+        "description": "Enhanced debug monitor with breakpoints"
+      },
+      {
+        "file": "cc65-runtime.bin",
+        "loadAddress": 57344,
+        "format": "binary",
+        "description": "CC65 runtime library"
+      }
+    ]
+  },
+  "peripherals": {
+    "acia": {
+      "baseAddress": 20480,
+      "baudRate": 115200,
+      "serialPort": "/dev/ttyUSB0",
+      "description": "High-speed serial interface for debugging"
+    },
+    "via": {
+      "baseAddress": 24576,
+      "enableTimers": true,
+      "portAConnections": [
+        {
+          "pin": 0,
+          "device": "Debug_LED_0",
+          "type": "output"
+        },
+        {
+          "pin": 1,
+          "device": "Debug_LED_1",
+          "type": "output"
+        },
+        {
+          "pin": 2,
+          "device": "Debug_LED_2",
+          "type": "output"
+        },
+        {
+          "pin": 3,
+          "device": "Debug_LED_3",
+          "type": "output"
+        },
+        {
+          "pin": 4,
+          "device": "Debug_LED_4",
+          "type": "output"
+        },
+        {
+          "pin": 5,
+          "device": "Debug_LED_5",
+          "type": "output"
+        },
+        {
+          "pin": 6,
+          "device": "Debug_LED_6",
+          "type": "output"
+        },
+        {
+          "pin": 7,
+          "device": "Debug_LED_7",
+          "type": "output"
+        }
+      ],
+      "portBConnections": [
+        {
+          "pin": 0,
+          "device": "Step_Button",
+          "type": "input"
+        },
+        {
+          "pin": 1,
+          "device": "Reset_Button",
+          "type": "input"
+        },
+        {
+          "pin": 2,
+          "device": "NMI_Button",
+          "type": "input"
+        },
+        {
+          "pin": 3,
+          "device": "IRQ_Button",
+          "type": "input"
+        }
+      ],
+      "description": "Debug interface with LEDs and control buttons"
+    }
+  },
+  "debugging": {
+    "enableTracing": true,
+    "breakOnReset": true,
+    "symbolFile": "program.sym"
+  }
+}

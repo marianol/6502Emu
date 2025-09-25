@@ -1,0 +1,103 @@
+{
+  "name": "C64-like System",
+  "description": "Configuration similar to Commodore 64",
+  "cpu": {
+    "type": "6502",
+    "clockSpeed": 985248
+  },
+  "memory": {
+    "ramSize": 65536,
+    "ramStart": 0,
+    "romImages": [
+      {
+        "file": "basic.bin",
+        "loadAddress": 40960,
+        "format": "binary",
+        "description": "BASIC interpreter"
+      },
+      {
+        "file": "kernal.bin",
+        "loadAddress": 57344,
+        "format": "binary",
+        "description": "Kernal ROM"
+      },
+      {
+        "file": "chargen.bin",
+        "loadAddress": 53248,
+        "format": "binary",
+        "description": "Character generator ROM"
+      }
+    ]
+  },
+  "peripherals": {
+    "acia": {
+      "baseAddress": 56832,
+      "baudRate": 1200,
+      "description": "RS-232 interface"
+    },
+    "via": {
+      "baseAddress": 56576,
+      "enableTimers": true,
+      "portAConnections": [
+        {
+          "pin": 0,
+          "device": "Joystick1",
+          "type": "input"
+        },
+        {
+          "pin": 1,
+          "device": "Joystick1",
+          "type": "input"
+        },
+        {
+          "pin": 2,
+          "device": "Joystick1",
+          "type": "input"
+        },
+        {
+          "pin": 3,
+          "device": "Joystick1",
+          "type": "input"
+        },
+        {
+          "pin": 4,
+          "device": "Joystick1_Fire",
+          "type": "input"
+        }
+      ],
+      "portBConnections": [
+        {
+          "pin": 0,
+          "device": "Joystick2",
+          "type": "input"
+        },
+        {
+          "pin": 1,
+          "device": "Joystick2",
+          "type": "input"
+        },
+        {
+          "pin": 2,
+          "device": "Joystick2",
+          "type": "input"
+        },
+        {
+          "pin": 3,
+          "device": "Joystick2",
+          "type": "input"
+        },
+        {
+          "pin": 4,
+          "device": "Joystick2_Fire",
+          "type": "input"
+        }
+      ],
+      "description": "Joystick and user port interface"
+    }
+  },
+  "debugging": {
+    "enableTracing": false,
+    "breakOnReset": false,
+    "symbolFile": null
+  }
+}

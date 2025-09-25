@@ -1,0 +1,19 @@
+{
+  "name": "Minimal System",
+  "description": "Bare minimum configuration for testing",
+  "cpu": {
+    "type": "6502",
+    "clockSpeed": 1000000
+  },
+  "memory": {
+    "ramSize": 8192,
+    "ramStart": 0,
+    "romImages": []
+  },
+  "peripherals": {},
+  "debugging": {
+    "enableTracing": false,
+    "breakOnReset": false,
+    "symbolFile": null
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "name": "Apple II-like System",
+  "description": "Configuration similar to Apple II computer",
+  "cpu": {
+    "type": "6502",
+    "clockSpeed": 1023000
+  },
+  "memory": {
+    "ramSize": 49152,
+    "ramStart": 0,
+    "romImages": [
+      {
+        "file": "applesoft-basic.bin",
+        "loadAddress": 53248,
+        "format": "binary",
+        "description": "Applesoft BASIC interpreter"
+      },
+      {
+        "file": "monitor.bin",
+        "loadAddress": 61440,
+        "format": "binary",
+        "description": "System monitor"
+      }
+    ]
+  },
+  "peripherals": {
+    "acia": {
+      "baseAddress": 49344,
+      "baudRate": 9600,
+      "description": "Serial interface card"
+    },
+    "via": {
+      "baseAddress": 49408,
+      "enableTimers": true,
+      "portAConnections": [
+        {
+          "pin": 0,
+          "device": "Keyboard",
+          "type": "input"
+        },
+        {
+          "pin": 1,
+          "device": "Keyboard",
+          "type": "input"
+        },
+        {
+          "pin": 2,
+          "device": "Keyboard",
+          "type": "input"
+        },
+        {
+          "pin": 3,
+          "device": "Keyboard",
+          "type": "input"
+        }
+      ],
+      "portBConnections": [
+        {
+          "pin": 0,
+          "device": "Speaker",
+          "type": "output"
+        },
+        {
+          "pin": 1,
+          "device": "Cassette",
+          "type": "bidirectional"
+        }
+      ],
+      "description": "Keyboard and audio interface"
+    }
+  },
+  "debugging": {
+    "enableTracing": false,
+    "breakOnReset": false,
+    "symbolFile": null
+  }
+}
