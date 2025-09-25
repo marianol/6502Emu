@@ -288,11 +288,13 @@ class EmulatorCLI {
             console.log(`Set PC to ${address.toString(16).toUpperCase().padStart(4, '0')}`);
         }
         this.emulator.start();
-        console.log('Execution started');
     }
     handleStop() {
         this.emulator.stop();
-        console.log('Execution stopped');
+        // Display current registers after stopping
+        const cpu = this.emulator.getSystemBus().getCPU();
+        const regs = cpu.getRegisters();
+        this.displayRegisters(regs);
     }
     handlePause() {
         this.emulator.pause();

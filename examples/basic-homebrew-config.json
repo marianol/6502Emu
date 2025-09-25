@@ -10,7 +10,7 @@
     "ramStart": 0,
     "romImages": [
       {
-        "file": "monitor.bin",
+        "file": "examples/monitor.bin",
         "loadAddress": 57344,
         "format": "binary",
         "description": "System monitor ROM"

@@ -336,12 +336,15 @@ export class EmulatorCLI {
     }
     
     this.emulator.start();
-    console.log('Execution started');
   }
 
   private handleStop(): void {
     this.emulator.stop();
-    console.log('Execution stopped');
+    
+    // Display current registers after stopping
+    const cpu = this.emulator.getSystemBus().getCPU();
+    const regs = cpu.getRegisters();
+    this.displayRegisters(regs);
   }
 
   private handlePause(): void {
