@@ -82,8 +82,8 @@ await emulator.initialize();
 ### Basic Homebrew System
 ```
 $0000-$7FFF  RAM (32KB)
-$5000-$5001  ACIA (68B50)
-$6000-$600F  VIA (65C22)
+$8000-$8001  ACIA (68B50)
+$8010-$801F  VIA (65C22)
 $E000-$FFFF  Monitor ROM (8KB)
 ```
 
@@ -121,36 +121,36 @@ $E000-$FFFF  CC65 Runtime ROM
 ```assembly
 ; Initialize ACIA
 LDA #$03        ; Master reset
-STA $5000       ; Control register
+STA $8000       ; Control register
 LDA #$11        ; 8N1, /16 clock
-STA $5000       ; Configure
+STA $8000       ; Configure
 
 ; Send character
 LDA #'H'        ; Character to send
-STA $5001       ; Data register
+STA $8001       ; Data register
 
 ; Receive character
 @wait:
-LDA $5000       ; Status register
+LDA $8000       ; Status register
 AND #$01        ; Check RDRF
 BEQ @wait       ; Wait for data
-LDA $5001       ; Read character
+LDA $8001       ; Read character
 ```
 
 ### VIA (65C22) Usage
 ```assembly
 ; Configure ports
 LDA #$FF        ; All outputs
-STA $6003       ; DDRA
+STA $8013       ; DDRA
 LDA #$00        ; All inputs
-STA $6002       ; DDRB
+STA $8012       ; DDRB
 
 ; Write to Port A (LEDs)
 LDA #$AA        ; Pattern
-STA $6001       ; ORA
+STA $8011       ; ORA
 
 ; Read from Port B (buttons)
-LDA $6000       ; IRB
+LDA $8010       ; IRB
 ```
 
 ## CC65 Integration

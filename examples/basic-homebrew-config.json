@@ -19,12 +19,12 @@
   },
   "peripherals": {
     "acia": {
-      "baseAddress": 20480,
+      "baseAddress": 32768,
       "baudRate": 9600,
       "description": "Serial communication interface"
     },
     "via": {
-      "baseAddress": 24576,
+      "baseAddress": 32784,
       "enableTimers": true,
       "portAConnections": [
         {

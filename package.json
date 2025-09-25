@@ -4,11 +4,16 @@
   "description": "A 6502/65C02 emulator for homebrew computer development",
   "main": "dist/emulator.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:native",
     "build:native": "node-gyp rebuild",
     "build:ts": "tsc",
     "test": "jest",
-    "dev": "ts-node src/emulator.ts"
+    "dev": "ts-node src/emulator.ts",
+    "cli": "ts-node src/cli.ts",
+    "start": "npm run build && node dist/cli.js"
+  },
+  "bin": {
+    "6502-emulator": "./dist/cli.js"
   },
   "keywords": ["6502", "65C02", "emulator", "homebrew", "computer"],
   "author": "",
