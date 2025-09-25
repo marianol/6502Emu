@@ -126,7 +126,7 @@ Once in the CLI, you can use these commands:
 
 **Debugging:**
 - `regs` - Show CPU registers and flags (P register shown in binary)
-- `mem <address> [length]` or `m <address> [length]` - Display memory contents
+- `mem [address] [length]` or `m [address] [length]` - Display memory contents (press return to continue)
 - `write <address> <byte1> [byte2] ...` or `w <address> <byte1> [byte2] ...` - Write multiple bytes to memory
 - `poke <address> <byte>` - Write single byte to memory
 - `regions` - Show memory regions (RAM, ROM, I/O)
@@ -340,7 +340,7 @@ Flags: NZC
 
 ### Memory Manipulation
 
-The CLI provides commands to directly write to memory:
+The CLI provides commands to directly write to and read from memory:
 
 ```bash
 # Write multiple bytes at once
@@ -353,6 +353,9 @@ The CLI provides commands to directly write to memory:
 # View memory contents
 6502> mem 0200 8                   # Display 8 bytes from $0200
 6502> m 0200 8                     # Same as above using alias
+6502> m 0200                       # Display 16 bytes from $0200
+6502> [press return]               # Continue to next 16 bytes (0x0210)
+6502> [press return]               # Continue to next 16 bytes (0x0220)
 
 # Create and test a simple program
 6502> write 0200 A9 01             # LDA #$01
@@ -374,6 +377,21 @@ Step 3: PC=0207 (4 cycles)
 A:02 X:00 Y:00 SP:FF P:00100000
 Flags: nv-bdizc (NV-BDIZC) 
 6502> mem 0300 1                   # Check result
+
+### Memory Browsing
+
+The memory commands support continuation - after using `mem` or `m`, you can press return (empty line) to continue displaying the next block of memory:
+
+```bash
+6502> m 0200                       # Display 16 bytes starting at $0200
+0200: 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 |................|
+6502> [press return]               # Continue from $0210
+0210: 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 |............... |
+6502> [press return]               # Continue from $0220  
+0220: 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 |!"#$%&'()*+,-./0|
+```
+
+This continuation only works after memory commands - other commands will break the sequence.
 
 # Advanced debugging with register manipulation
 6502> setpc 0200                   # Set program counter to 0x0200

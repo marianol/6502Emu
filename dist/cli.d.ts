@@ -11,6 +11,9 @@ export declare class EmulatorCLI {
     private rl;
     private commands;
     private running;
+    private lastMemoryAddress;
+    private lastMemoryLength;
+    private lastCommand;
     constructor();
     /**
      * Start the CLI

@@ -20,6 +20,9 @@ class EmulatorCLI {
     constructor() {
         this.commands = new Map();
         this.running = true;
+        this.lastMemoryAddress = 0;
+        this.lastMemoryLength = 16;
+        this.lastCommand = '';
         this.emulator = new emulator_1.Emulator();
         this.rl = readline_1.default.createInterface({
             input: process.stdin,
@@ -129,13 +132,13 @@ class EmulatorCLI {
         this.addCommand({
             name: 'mem',
             description: 'Display memory contents',
-            usage: 'mem <address> [length]',
+            usage: 'mem [address] [length] (press return to continue)',
             handler: this.handleMemory.bind(this)
         });
         this.addCommand({
             name: 'm',
             description: 'Display memory contents (alias for mem)',
-            usage: 'm <address> [length]',
+            usage: 'm [address] [length] (press return to continue)',
             handler: this.handleMemory.bind(this)
         });
         this.addCommand({
@@ -216,6 +219,12 @@ class EmulatorCLI {
             if (trimmed) {
                 await this.processCommand(trimmed);
             }
+            else {
+                // Empty input - continue memory display if last command was mem or m
+                if (this.lastCommand === 'mem' || this.lastCommand === 'm') {
+                    this.handleMemory([]);
+                }
+            }
             if (this.running) {
                 this.rl.prompt();
             }
@@ -241,6 +250,8 @@ class EmulatorCLI {
         const command = this.commands.get(commandName);
         if (command) {
             try {
+                // Track the last command for memory continuation
+                this.lastCommand = commandName;
                 await command.handler(args);
             }
             catch (error) {
@@ -500,19 +511,39 @@ class EmulatorCLI {
         console.log(`Flags: ${flags.join('')} (NV-BDIZC)`);
     }
     handleMemory(args) {
-        if (args.length < 1 || args.length > 2) {
-            console.log('Usage: mem <address> [length]');
-            return;
+        let address;
+        let length;
+        if (args.length === 0) {
+            // Continue from last address if no arguments provided
+            address = this.lastMemoryAddress;
+            length = this.lastMemoryLength;
         }
-        const address = parseInt(args[0], 16);
-        const length = args.length > 1 ? parseInt(args[1]) : 16;
-        if (isNaN(address) || isNaN(length)) {
-            console.log('Invalid address or length');
+        else if (args.length === 1) {
+            address = parseInt(args[0], 16);
+            length = 16; // Default length
+            if (isNaN(address)) {
+                console.log('Invalid address');
+                return;
+            }
+        }
+        else if (args.length === 2) {
+            address = parseInt(args[0], 16);
+            length = parseInt(args[1]);
+            if (isNaN(address) || isNaN(length)) {
+                console.log('Invalid address or length');
+                return;
+            }
+        }
+        else {
+            console.log('Usage: mem [address] [length]');
             return;
         }
         const inspector = this.emulator.getMemoryInspector();
         const dump = inspector.dumpMemory(address, length, 'hex');
         console.log(dump);
+        // Update last memory address for continuation
+        this.lastMemoryAddress = address + length;
+        this.lastMemoryLength = length;
     }
     handleWrite(args) {
         if (args.length < 2) {
