@@ -222,6 +222,10 @@ We welcome contributions! Please see the [Development Guide](docs/development-gu
 - Testing requirements
 - Pull request process
 
+## Author
+
+**Mariano Luna** - Creator and lead developer of the 6502/65C02 Homebrew Computer Emulator
+
 ## License
 
 MIT License - see LICENSE file for details.

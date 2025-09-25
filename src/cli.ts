@@ -573,6 +573,7 @@ export class EmulatorCLI {
   private handleVersion(): void {
     const packageJson = require('../package.json');
     console.log(`6502/65C02 Homebrew Computer Emulator v${packageJson.version}`);
+    console.log(`Author: ${packageJson.author}`);
     console.log(`Description: ${packageJson.description}`);
     console.log(`License: ${packageJson.license}`);
   }
