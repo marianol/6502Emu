@@ -269,12 +269,25 @@ export class MemoryManager {
 
   // Private helper methods
   private findRegion(address: number): MemoryRegion | null {
-    for (const region of this.regions) {
-      if (address >= region.start && address <= region.end) {
-        return region;
-      }
+    // Find all regions that contain this address
+    const matchingRegions = this.regions.filter(region => 
+      address >= region.start && address <= region.end
+    );
+    
+    if (matchingRegions.length === 0) {
+      return null;
     }
-    return null;
+    
+    // If multiple regions match, prioritize by type: ROM > IO > RAM
+    const priorityOrder = { 'ROM': 3, 'IO': 2, 'RAM': 1 };
+    
+    matchingRegions.sort((a, b) => {
+      const priorityA = priorityOrder[a.type] || 0;
+      const priorityB = priorityOrder[b.type] || 0;
+      return priorityB - priorityA; // Higher priority first
+    });
+    
+    return matchingRegions[0];
   }
 
   private sortRegions(): void {

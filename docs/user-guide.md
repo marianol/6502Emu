@@ -123,6 +123,7 @@ Once in the CLI, you can use these commands:
 - `mem <address> [length]` - Display memory contents
 - `write <address> <byte1> [byte2] ...` - Write multiple bytes to memory
 - `poke <address> <byte>` - Write single byte to memory
+- `regions` - Show memory regions (RAM, ROM, I/O)
 - `break <address>` - Set breakpoint
 - `unbreak <address>` - Remove breakpoint
 

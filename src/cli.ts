@@ -182,6 +182,13 @@ export class EmulatorCLI {
 
     // Help and utility commands
     this.addCommand({
+      name: 'regions',
+      description: 'Show memory regions',
+      usage: 'regions',
+      handler: this.handleRegions.bind(this)
+    });
+
+    this.addCommand({
       name: 'help',
       description: 'Show available commands',
       usage: 'help [command]',
@@ -351,14 +358,22 @@ export class EmulatorCLI {
     }
 
     try {
-      const memory = this.emulator.getSystemBus().getMemory();
-      const loadedROM = await memory.loadROMFromFile({
-        file,
-        loadAddress: address,
-        format: format as 'binary' | 'ihex' | 'srec'
-      });
-      
-      console.log(`ROM loaded: ${file} at ${loadedROM.loadAddress.toString(16).toUpperCase().padStart(4, '0')} (${loadedROM.data.length} bytes)`);
+      // For binary format, load directly to avoid async issues
+      if (format === 'binary') {
+        const data = fs.readFileSync(file);
+        const memory = this.emulator.getSystemBus().getMemory();
+        memory.loadROM(data, address);
+        console.log(`ROM loaded: ${file} at ${address.toString(16).toUpperCase().padStart(4, '0')} (${data.length} bytes)`);
+      } else {
+        // Use async method for other formats
+        const memory = this.emulator.getSystemBus().getMemory();
+        const loadedROM = await memory.loadROMFromFile({
+          file,
+          loadAddress: address,
+          format: format as 'binary' | 'ihex' | 'srec'
+        });
+        console.log(`ROM loaded: ${file} at ${loadedROM.loadAddress.toString(16).toUpperCase().padStart(4, '0')} (${loadedROM.data.length} bytes)`);
+      }
     } catch (error) {
       console.error(`Failed to load ROM: ${error}`);
     }
@@ -369,7 +384,7 @@ export class EmulatorCLI {
     console.log(`A:  ${regs.A.toString(16).toUpperCase().padStart(2, '0')}    X:  ${regs.X.toString(16).toUpperCase().padStart(2, '0')}    Y:  ${regs.Y.toString(16).toUpperCase().padStart(2, '0')}`);
     console.log(`PC: ${regs.PC.toString(16).toUpperCase().padStart(4, '0')}  SP: ${regs.SP.toString(16).toUpperCase().padStart(2, '0')}    P:  ${regs.P.toString(16).toUpperCase().padStart(2, '0')}`);
     console.log(`Cycles: ${regs.cycles}`);
-    
+
     // Decode status flags
     const flags = [];
     if (regs.P & 0x80) flags.push('N');
@@ -430,7 +445,7 @@ export class EmulatorCLI {
       for (let i = 0; i < bytes.length; i++) {
         memory.write(address + i, bytes[i]);
       }
-      
+
       console.log(`Wrote ${bytes.length} byte(s) to ${address.toString(16).toUpperCase().padStart(4, '0')}: ${bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}`);
     } catch (error) {
       console.error(`Failed to write memory: ${error}`);
@@ -460,7 +475,7 @@ export class EmulatorCLI {
     try {
       const memory = this.emulator.getSystemBus().getMemory();
       memory.write(address, byte);
-      
+
       console.log(`Poked ${address.toString(16).toUpperCase().padStart(4, '0')}: ${byte.toString(16).toUpperCase().padStart(2, '0')}`);
     } catch (error) {
       console.error(`Failed to poke memory: ${error}`);
@@ -533,6 +548,18 @@ export class EmulatorCLI {
       }
     }
   }
+
+  private handleRegions(): void {
+    const memory = this.emulator.getSystemBus().getMemory();
+    const regions = memory.getMemoryMap();
+    
+    console.log(`Memory Regions (${regions.length} total):`);
+    regions.forEach((region, index) => {
+      console.log(`  ${index}: ${region.type}: ${region.start.toString(16).toUpperCase().padStart(4, '0')}-${region.end.toString(16).toUpperCase().padStart(4, '0')}`);
+    });
+  }
+
+
 
   private handleQuit(): void {
     console.log('Goodbye!');

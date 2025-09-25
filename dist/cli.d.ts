@@ -42,6 +42,8 @@ export declare class EmulatorCLI {
     private handleLoadROM;
     private handleRegisters;
     private handleMemory;
+    private handleWrite;
+    private handlePoke;
     private handleBreakpoint;
     private handleUnbreakpoint;
     private handleSpeed;
