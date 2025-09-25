@@ -85,18 +85,69 @@ setTimeout(() => {
 
 ### Command Line Interface
 
+The emulator includes a comprehensive CLI for interactive use:
+
 ```bash
-# Run with default configuration
-node src/cli.ts
+# Run CLI in development mode
+npm run cli
 
-# Load specific ROM file
-node src/cli.ts --rom program.bin --load-address 0x8000
+# Run CLI in production mode (after building)
+npm run start
 
-# Use custom configuration
-node src/cli.ts --config my-system.json
+# Or use the built CLI directly
+node dist/cli.js
+```
 
-# Enable debugging
-node src/cli.ts --debug --breakpoint 0x0200
+#### CLI Commands
+
+Once in the CLI, you can use these commands:
+
+**System Control:**
+- `load <config-file>` - Load system configuration
+- `reset` - Reset the system
+- `status` - Show system status and statistics
+
+**Execution Control:**
+- `run` - Start continuous execution
+- `stop` - Stop execution
+- `pause` - Pause execution
+- `step [count]` - Execute single instruction(s)
+
+**ROM Loading:**
+- `loadrom <file> <address> [format]` - Load ROM image
+  - Formats: `binary`, `ihex`, `srec`
+  - Address in hexadecimal (e.g., `0200`)
+
+**Debugging:**
+- `regs` - Show CPU registers and flags
+- `mem <address> [length]` - Display memory contents
+- `break <address>` - Set breakpoint
+- `unbreak <address>` - Remove breakpoint
+
+**Configuration:**
+- `speed <hz>` - Set clock speed in Hz
+
+**Help:**
+- `help [command]` - Show available commands or command details
+- `quit` / `exit` - Exit the emulator
+
+#### CLI Usage Examples
+
+```bash
+# Start CLI and load configuration
+npm run cli
+6502> load examples/minimal-system.json
+6502> loadrom examples/test-program.bin 0200 binary
+6502> regs
+6502> step 5
+6502> mem 200 16
+6502> quit
+
+# Batch commands via pipe
+echo "load examples/minimal-system.json
+status
+regs
+quit" | npm run cli
 ```
 
 ## Configuration
@@ -124,12 +175,12 @@ Create a JSON configuration file to define your system:
   },
   "peripherals": {
     "acia": {
-      "baseAddress": 20480,
+      "baseAddress": 32768,
       "baudRate": 9600,
       "serialPort": "/dev/ttyUSB0"
     },
     "via": {
-      "baseAddress": 24576,
+      "baseAddress": 32784,
       "enableTimers": true
     }
   },
@@ -208,6 +259,34 @@ await emulator.getSystemBus().getMemory().loadMultipleROMs([
 ]);
 ```
 
+### Creating Test Programs
+
+You can create simple test programs using Node.js:
+
+```javascript
+// Create a simple test program
+const fs = require('fs');
+const program = Buffer.from([
+  0xA9, 0x42,        // LDA #$42
+  0x8D, 0x00, 0x02,  // STA $0200
+  0xA9, 0x01,        // LDA #$01
+  0x69, 0x01,        // ADC #$01
+  0x8D, 0x01, 0x02,  // STA $0201
+  0x4C, 0x00, 0x02   // JMP $0200 (loop)
+]);
+fs.writeFileSync('test-program.bin', program);
+```
+
+Then load and test in the CLI:
+```bash
+npm run cli
+6502> load examples/minimal-system.json
+6502> loadrom test-program.bin 0200 binary
+6502> step 5
+6502> regs
+6502> mem 200 4
+```
+
 ## Using Peripherals
 
 ### 68B50 ACIA (Serial Communication)
@@ -217,26 +296,26 @@ await emulator.getSystemBus().getMemory().loadMultipleROMs([
 ```assembly
 ; Initialize ACIA
 LDA #$03        ; Master reset
-STA $5000       ; ACIA control register
+STA $8000       ; ACIA control register
 LDA #$11        ; 8N1, /16 clock, RTS low
-STA $5000       ; Configure ACIA
+STA $8000       ; Configure ACIA
 
 ; Send character
 LDA #'A'        ; Character to send
-STA $5001       ; ACIA data register
+STA $8001       ; ACIA data register
 
 ; Wait for transmission complete
 @wait:
-LDA $5000       ; Read status
+LDA $8000       ; Read status
 AND #$02        ; Check TDRE (Transmit Data Register Empty)
 BEQ @wait       ; Wait until ready
 
 ; Receive character
 @receive:
-LDA $5000       ; Read status
+LDA $8000       ; Read status
 AND #$01        ; Check RDRF (Receive Data Register Full)
 BEQ @receive    ; Wait for data
-LDA $5001       ; Read received character
+LDA $8001       ; Read received character
 ```
 
 #### ACIA Configuration
@@ -244,7 +323,7 @@ LDA $5001       ; Read received character
 ```typescript
 // Configure ACIA in system config
 "acia": {
-  "baseAddress": 0x5000,
+  "baseAddress": 0x8000,
   "baudRate": 9600,
   "serialPort": "/dev/ttyUSB0"  // Optional: connect to real serial port
 }
@@ -257,16 +336,16 @@ LDA $5001       ; Read received character
 ```assembly
 ; Configure Port A as output, Port B as input
 LDA #$FF        ; All bits output
-STA $6003       ; DDRA (Data Direction Register A)
+STA $8013       ; DDRA (Data Direction Register A)
 LDA #$00        ; All bits input
-STA $6002       ; DDRB (Data Direction Register B)
+STA $8012       ; DDRB (Data Direction Register B)
 
 ; Write to Port A
 LDA #$AA        ; Test pattern
-STA $6001       ; ORA (Output Register A)
+STA $8011       ; ORA (Output Register A)
 
 ; Read from Port B
-LDA $6000       ; IRB (Input Register B)
+LDA $8010       ; IRB (Input Register B)
 ```
 
 #### Timer Operations
@@ -274,19 +353,19 @@ LDA $6000       ; IRB (Input Register B)
 ```assembly
 ; Set up Timer 1 for 1ms interval (assuming 1MHz clock)
 LDA #<1000      ; Low byte of count
-STA $6004       ; T1C-L (Timer 1 Counter Low)
+STA $8014       ; T1C-L (Timer 1 Counter Low)
 LDA #>1000      ; High byte of count (starts timer)
-STA $6005       ; T1C-H (Timer 1 Counter High)
+STA $8015       ; T1C-H (Timer 1 Counter High)
 
 ; Wait for timer to expire
 @wait:
-LDA $600D       ; IFR (Interrupt Flag Register)
+LDA $801D       ; IFR (Interrupt Flag Register)
 AND #$40        ; Timer 1 flag
 BEQ @wait       ; Wait for timeout
 
 ; Clear timer flag
 LDA #$40
-STA $600D       ; Clear Timer 1 interrupt flag
+STA $801D       ; Clear Timer 1 interrupt flag
 ```
 
 #### VIA Interrupts
@@ -294,7 +373,7 @@ STA $600D       ; Clear Timer 1 interrupt flag
 ```assembly
 ; Enable Timer 1 interrupt
 LDA #$C0        ; Set bit 7 (master enable) and bit 6 (Timer 1)
-STA $600E       ; IER (Interrupt Enable Register)
+STA $801E       ; IER (Interrupt Enable Register)
 
 ; Set up interrupt vector
 LDA #<timer_isr
@@ -307,7 +386,7 @@ CLI
 
 timer_isr:
   ; Handle timer interrupt
-  LDA $600D     ; Read IFR to identify interrupt source
+  LDA $801D     ; Read IFR to identify interrupt source
   AND #$40      ; Check Timer 1 flag
   BEQ @exit     ; Not our interrupt
   
@@ -316,7 +395,7 @@ timer_isr:
   
   ; Clear interrupt flag
   LDA #$40
-  STA $600D     ; Clear Timer 1 flag
+  STA $801D     ; Clear Timer 1 flag
   
 @exit:
   RTI           ; Return from interrupt
@@ -585,10 +664,21 @@ Warning: Read from unmapped memory: 0x1234
 
 #### Peripheral Not Responding
 ```
-Warning: Write to unmapped memory: 0x5000
+Warning: Write to unmapped memory: 0x8000
 ```
 
-**Solution**: Verify peripheral configuration in your system config file.
+**Solution**: Verify peripheral configuration in your system config file and ensure addresses don't conflict with RAM.
+
+#### CLI Import Errors
+```
+Error: import * as fs from 'fs';
+```
+
+**Solution**: Use the npm scripts instead of running TypeScript files directly:
+```bash
+npm run cli          # For development
+npm run start        # For production
+```
 
 #### Performance Issues
 ```
