@@ -98,17 +98,19 @@ class MemoryManager {
     }
     // Load ROM data into memory
     loadROM(data, startAddress) {
+        const endAddress = startAddress + data.length - 1;
         // Remove any existing ROM region that overlaps
         this.regions = this.regions.filter(region => region.type !== 'ROM' ||
             region.end < startAddress ||
-            region.start > startAddress + data.length - 1);
+            region.start > endAddress);
         const romHandler = new ROMHandler(data, startAddress);
         this.regions.push({
             start: startAddress,
-            end: startAddress + data.length - 1,
+            end: endAddress,
             type: 'ROM',
             handler: romHandler
         });
+        console.log(`ROM region added: $${startAddress.toString(16).toUpperCase().padStart(4, '0')}-$${endAddress.toString(16).toUpperCase().padStart(4, '0')}`);
         this.sortRegions();
     }
     // Load ROM from file with format support

@@ -4,12 +4,13 @@
 // Global memory callback functions for the C code
 static Napi::FunctionReference g_read_callback;
 static Napi::FunctionReference g_write_callback;
-static Napi::Env g_env;
+static napi_env g_env;
 
 // C callback functions that bridge to JavaScript
 uint8_t memory_read_bridge(uint16_t address) {
     if (!g_read_callback.IsEmpty()) {
-        Napi::Value result = g_read_callback.Call({Napi::Number::New(g_env, address)});
+        Napi::Env env(g_env);
+        Napi::Value result = g_read_callback.Call({Napi::Number::New(env, address)});
         if (result.IsNumber()) {
             return result.As<Napi::Number>().Uint32Value() & 0xFF;
         }
@@ -19,9 +20,10 @@ uint8_t memory_read_bridge(uint16_t address) {
 
 void memory_write_bridge(uint16_t address, uint8_t value) {
     if (!g_write_callback.IsEmpty()) {
+        Napi::Env env(g_env);
         g_write_callback.Call({
-            Napi::Number::New(g_env, address),
-            Napi::Number::New(g_env, value)
+            Napi::Number::New(env, address),
+            Napi::Number::New(env, value)
         });
     }
 }

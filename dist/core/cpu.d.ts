@@ -70,5 +70,6 @@ export declare class CPU6502Emulator implements CPU6502 {
     private handleNMI;
     private handleIRQ;
     private executeInstruction;
+    private setZeroNegativeFlags;
 }
 //# sourceMappingURL=cpu.d.ts.map

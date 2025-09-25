@@ -105,18 +105,16 @@ export class Emulator {
       const memory = this.systemBus.getMemory();
       memory.configureRAM(this.config.memory.ramStart, this.config.memory.ramSize);
       
-      // Add default reset vectors if no ROM is loaded
-      if (this.config.memory.romImages.length === 0) {
+      // Load ROM images first
+      if (this.config.memory.romImages.length > 0) {
+        await memory.loadMultipleROMs(this.config.memory.romImages);
+      } else {
+        // Add default reset vectors if no ROM is loaded
         // Create a minimal ROM with reset vector pointing to RAM start
         const resetVector = new Uint8Array(6);
         resetVector[4] = this.config.memory.ramStart & 0xFF;        // Reset vector low byte
         resetVector[5] = (this.config.memory.ramStart >> 8) & 0xFF; // Reset vector high byte
         memory.loadROM(resetVector, 0xFFFA); // NMI, Reset, IRQ vectors
-      }
-      
-      // Load ROM images
-      if (this.config.memory.romImages.length > 0) {
-        await memory.loadMultipleROMs(this.config.memory.romImages);
       }
       
       // Configure peripherals
@@ -136,7 +134,7 @@ export class Emulator {
         }
       }
       
-      // Reset system to initial state
+      // Reset system to initial state AFTER loading ROM
       this.reset();
       
       console.log('Emulator initialized successfully');
