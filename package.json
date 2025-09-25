@@ -15,7 +15,13 @@
   "bin": {
     "6502-emulator": "./dist/cli.js"
   },
-  "keywords": ["6502", "65C02", "emulator", "homebrew", "computer"],
+  "keywords": [
+    "6502",
+    "65C02",
+    "emulator",
+    "homebrew",
+    "computer"
+  ],
   "author": "Mariano Luna",
   "license": "MIT",
   "dependencies": {

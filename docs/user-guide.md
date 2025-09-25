@@ -108,10 +108,10 @@ Once in the CLI, you can use these commands:
 - `status` - Show system status and statistics
 
 **Execution Control:**
-- `run` - Start continuous execution
+- `run [address]` - Start continuous execution (optionally from specific address)
 - `stop` - Stop execution
 - `pause` - Pause execution
-- `step [count]` - Execute single instruction(s)
+- `step [count]` - Execute single instruction(s) with register display
 
 **ROM Loading:**
 - `loadrom <file> <address> [format]` - Load ROM image
@@ -119,7 +119,7 @@ Once in the CLI, you can use these commands:
   - Address in hexadecimal (e.g., `0200`)
 
 **Debugging:**
-- `regs` - Show CPU registers and flags
+- `regs` - Show CPU registers and flags (P register shown in binary)
 - `mem <address> [length]` - Display memory contents
 - `write <address> <byte1> [byte2] ...` - Write multiple bytes to memory
 - `poke <address> <byte>` - Write single byte to memory
@@ -149,11 +149,14 @@ npm run cli
 6502> mem 200 16
 6502> quit
 
-# Memory manipulation examples
+# Memory manipulation and execution examples
 npm run cli
 6502> write 0200 A9 42 8D 00 02    # Write LDA #$42, STA $0200
 6502> poke 0205 EA                 # Write NOP instruction
 6502> mem 200 8                    # View written bytes
+6502> run 0200                     # Start execution from address 0x0200
+6502> stop                         # Stop execution
+6502> step 2                       # Step 2 instructions with register display
 6502> quit
 
 # Batch commands via pipe
@@ -301,6 +304,33 @@ npm run cli
 6502> mem 200 4
 ```
 
+### CPU Register Manipulation
+
+The CLI provides commands to directly manipulate CPU registers for debugging:
+
+```bash
+# Set program counter
+6502> setpc 0200                   # Set PC to 0x0200
+
+# Set individual registers
+6502> setreg A 42                  # Set accumulator to 0x42
+6502> setreg X 10                  # Set X register to 0x10
+6502> setreg Y 20                  # Set Y register to 0x20
+6502> setreg SP FE                 # Set stack pointer to 0xFE
+
+# Set processor status flags
+6502> setreg P 83                  # Set flags: N=1, Z=1, C=1
+P set to 83
+Flags: NZC
+
+# View all registers
+6502> regs
+A:  42    X:  10    Y:  20
+PC: 0200  SP: FE    P:  83
+Cycles: 0
+Flags: NZC
+```
+
 ### Memory Manipulation
 
 The CLI provides commands to directly write to memory:
@@ -320,8 +350,28 @@ The CLI provides commands to directly write to memory:
 6502> write 0202 69 01             # ADC #$01  
 6502> write 0204 8D 00 03          # STA $0300
 6502> write 0207 4C 00 02          # JMP $0200
-6502> step 4                       # Execute 4 instructions
+6502> run 0200                     # Start execution from 0x0200
+6502> stop                         # Stop after a moment
+6502> step 3                       # Step through 3 instructions
+Step 1: PC=0201 (2 cycles)         # Each step shows registers
+A:01 X:00 Y:00 SP:FF P:00100000     # P register in binary
+Flags: nv-bdizc (NV-BDIZC)          # Flag status (uppercase=set, lowercase=clear)
+---
+Step 2: PC=0203 (2 cycles)
+A:02 X:00 Y:00 SP:FF P:00100000
+Flags: nv-bdizc (NV-BDIZC)
+---
+Step 3: PC=0207 (4 cycles)
+A:02 X:00 Y:00 SP:FF P:00100000
+Flags: nv-bdizc (NV-BDIZC) 
 6502> mem 0300 1                   # Check result
+
+# Advanced debugging with register manipulation
+6502> setpc 0200                   # Set program counter to 0x0200
+6502> setreg A 10                  # Set accumulator to 0x10
+6502> setreg P 83                  # Set flags (N=1, Z=1, C=1)
+6502> regs                         # View all registers
+6502> step 1                       # Execute one instruction
 ```
 
 ## Using Peripherals
