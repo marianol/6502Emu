@@ -1,20 +1,22 @@
 /*
  * fake6502 - A portable, open-source 6502 CPU emulator
- * Simplified implementation for homebrew computer emulation
- * Based on public domain fake6502 code
+ * Wrapper implementation using the improved MyLittle6502 core
  */
 
 #include "fake6502.h"
 #include <string.h>
 
-// CPU state
-static cpu_state_t cpu;
-static int irq_pending = 0;
-static int nmi_pending = 0;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Memory access callbacks
 static read_func_t memory_read = NULL;
 static write_func_t memory_write = NULL;
+
+// Interrupt state
+static int irq_pending = 0;
+static int nmi_pending = 0;
 
 // Default memory functions (return 0xFF for reads, ignore writes)
 static uint8_t default_read(uint16_t address) {
@@ -27,12 +29,12 @@ static void default_write(uint16_t address, uint8_t value) {
     (void)value;
 }
 
-// Helper functions
-static uint8_t read6502(uint16_t address) {
+// Bridge functions for the improved fake6502 core
+uint8_t read6502(uint16_t address) {
     return memory_read ? memory_read(address) : default_read(address);
 }
 
-static void write6502(uint16_t address, uint8_t value) {
+void write6502(uint16_t address, uint8_t value) {
     if (memory_write) {
         memory_write(address, value);
     } else {
@@ -40,131 +42,89 @@ static void write6502(uint16_t address, uint8_t value) {
     }
 }
 
-static uint16_t read6502_word(uint16_t address) {
-    return read6502(address) | (read6502(address + 1) << 8);
-}
+// Include the improved fake6502 implementation
+// We need to define the types it expects
+typedef unsigned char uint8;
+typedef unsigned short ushort;
+typedef unsigned int uint32;
 
-static void push6502(uint8_t value) {
-    write6502(0x0100 + cpu.sp, value);
-    cpu.sp--;
-}
+// Define NES_CPU to disable BCD mode (we can enable it later if needed)
+#define NES_CPU
 
-static uint8_t pull6502(void) {
-    cpu.sp++;
-    return read6502(0x0100 + cpu.sp);
-}
+// Include the complete implementation (this will define static variables)
+#include "fake6502_improved.h"
 
 // CPU control functions
 void cpu_reset(void) {
-    memset(&cpu, 0, sizeof(cpu));
-    cpu.sp = 0xFF;
-    cpu.status = FLAG_CONSTANT | FLAG_INTERRUPT;
-    cpu.pc = read6502_word(0xFFFC);
-    cpu.cycles = 0;
+    // Initialize CPU state without reading from memory
+    // We'll set PC manually after this
+    set_pc_6502(0x0000);
+    set_sp_6502(0xFD);
+    set_a_6502(0);
+    set_x_6502(0);
+    set_y_6502(0);
+    set_status_6502(0x20 | 0x04); // FLAG_CONSTANT | FLAG_INTERRUPT
+    set_cycles_6502(0);
+    
     irq_pending = 0;
     nmi_pending = 0;
 }
 
 uint8_t cpu_step(void) {
-    uint8_t opcode;
-    uint8_t cycles = 2; // Default cycle count
-    
-    // Handle NMI (highest priority)
+    // Handle pending interrupts
     if (nmi_pending) {
-        push6502((cpu.pc >> 8) & 0xFF);
-        push6502(cpu.pc & 0xFF);
-        push6502(cpu.status);
-        cpu.status |= FLAG_INTERRUPT;
-        cpu.pc = read6502_word(0xFFFA);
+        nmi6502();
         nmi_pending = 0;
-        cpu.cycles += 7;
-        return 7;
-    }
-    
-    // Handle IRQ (if enabled)
-    if (irq_pending && !(cpu.status & FLAG_INTERRUPT)) {
-        push6502((cpu.pc >> 8) & 0xFF);
-        push6502(cpu.pc & 0xFF);
-        push6502(cpu.status);
-        cpu.status |= FLAG_INTERRUPT;
-        cpu.pc = read6502_word(0xFFFE);
+    } else if (irq_pending) {
+        irq6502();
         irq_pending = 0;
-        cpu.cycles += 7;
-        return 7;
     }
     
-    // Fetch instruction
-    opcode = read6502(cpu.pc);
-    cpu.pc++;
-    
-    // Execute instruction (simplified implementation)
-    switch (opcode) {
-        case 0x00: // BRK
-            cpu.pc++;
-            push6502((cpu.pc >> 8) & 0xFF);
-            push6502(cpu.pc & 0xFF);
-            push6502(cpu.status | FLAG_BREAK);
-            cpu.status |= FLAG_INTERRUPT;
-            cpu.pc = read6502_word(0xFFFE);
-            cycles = 7;
-            break;
-            
-        case 0x4C: // JMP absolute
-            cpu.pc = read6502_word(cpu.pc);
-            cycles = 3;
-            break;
-            
-        case 0x6C: // JMP indirect
-            {
-                uint16_t addr = read6502_word(cpu.pc);
-                // Handle page boundary bug in original 6502
-                if ((addr & 0xFF) == 0xFF) {
-                    cpu.pc = read6502(addr) | (read6502(addr & 0xFF00) << 8);
-                } else {
-                    cpu.pc = read6502_word(addr);
-                }
-                cycles = 5;
-            }
-            break;
-            
-        case 0xA9: // LDA immediate
-            cpu.a = read6502(cpu.pc++);
-            cpu.status &= ~(FLAG_ZERO | FLAG_SIGN);
-            if (cpu.a == 0) cpu.status |= FLAG_ZERO;
-            if (cpu.a & 0x80) cpu.status |= FLAG_SIGN;
-            cycles = 2;
-            break;
-            
-        case 0xEA: // NOP
-            cycles = 2;
-            break;
-            
-        case 0x40: // RTI
-            cpu.status = pull6502();
-            cpu.pc = pull6502();
-            cpu.pc |= (pull6502() << 8);
-            cycles = 6;
-            break;
-            
-        default:
-            // Unknown opcode - just advance PC
-            cycles = 2;
-            break;
-    }
-    
-    cpu.cycles += cycles;
-    return cycles;
+    // Execute one instruction and return cycles
+    uint32_t old_ticks = get_cycles_6502();
+    step6502();
+    return (uint8_t)(get_cycles_6502() - old_ticks);
 }
+
+// Accessor functions for the static variables in fake6502_improved.h
+// We need to add these functions to the improved header
+uint16_t get_pc_6502(void);
+uint8_t get_sp_6502(void);
+uint8_t get_a_6502(void);
+uint8_t get_x_6502(void);
+uint8_t get_y_6502(void);
+uint8_t get_status_6502(void);
+uint32_t get_cycles_6502(void);
+
+void set_pc_6502(uint16_t value);
+void set_sp_6502(uint8_t value);
+void set_a_6502(uint8_t value);
+void set_x_6502(uint8_t value);
+void set_y_6502(uint8_t value);
+void set_status_6502(uint8_t value);
+void set_cycles_6502(uint32_t value);
 
 void cpu_get_state(cpu_state_t* state) {
     if (state) {
-        *state = cpu;
+        state->pc = get_pc_6502();
+        state->sp = get_sp_6502();
+        state->a = get_a_6502();
+        state->x = get_x_6502();
+        state->y = get_y_6502();
+        state->status = get_status_6502();
+        state->cycles = get_cycles_6502();
     }
 }
 
 void cpu_set_state(const cpu_state_t* state) {
     if (state) {
-        cpu = *state;
+        set_pc_6502(state->pc);
+        set_sp_6502(state->sp);
+        set_a_6502(state->a);
+        set_x_6502(state->x);
+        set_y_6502(state->y);
+        set_status_6502(state->status);
+        set_cycles_6502(state->cycles);
     }
 }
 
@@ -192,3 +152,7 @@ int cpu_is_irq_pending(void) {
 int cpu_is_nmi_pending(void) {
     return nmi_pending;
 }
+
+#ifdef __cplusplus
+}
+#endif

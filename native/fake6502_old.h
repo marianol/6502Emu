@@ -1,16 +1,12 @@
 /*
  * fake6502 - A portable, open-source 6502 CPU emulator
- * Wrapper for the improved MyLittle6502 implementation
+ * This is a simplified version based on the public domain fake6502 implementation
  */
 
 #ifndef FAKE6502_H
 #define FAKE6502_H
 
 #include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // CPU state structure
 typedef struct {
@@ -52,9 +48,5 @@ int cpu_is_nmi_pending(void);
 #define FLAG_CONSTANT  0x20
 #define FLAG_OVERFLOW  0x40
 #define FLAG_SIGN      0x80
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // FAKE6502_H

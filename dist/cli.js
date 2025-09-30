@@ -572,7 +572,7 @@ class EmulatorCLI {
         }
         else if (args.length === 1) {
             address = parseInt(args[0], 16);
-            length = 32; // Default length for disassembly (covers ~10-16 instructions)
+            length = 16; // Default length for disassembly (covers ~6-8 instructions)
             if (isNaN(address)) {
                 console.log('Invalid address');
                 return;

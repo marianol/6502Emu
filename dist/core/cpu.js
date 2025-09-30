@@ -8,13 +8,11 @@ exports.CPU6502Emulator = void 0;
 // Import the native addon
 let nativeAddon;
 try {
-    // Disable native addon for now - fallback implementation works correctly
-    throw new Error('Using fallback implementation');
-    // nativeAddon = require('../../build/Release/fake6502_addon.node');
-    // console.log('Native addon loaded successfully');
+    nativeAddon = require('../../build/Release/fake6502_addon.node');
+    console.log('Native addon loaded successfully');
 }
 catch (error) {
-    console.warn('Native addon not available, using fallback implementation');
+    console.warn('Native addon not available, using fallback implementation:', error instanceof Error ? error.message : String(error));
     nativeAddon = null;
 }
 /**
