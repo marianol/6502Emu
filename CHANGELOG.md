@@ -1,70 +1,61 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2024-12-19
+## [1.2.0] - 2024-12-19
 
 ### Added
-- **Memory Disassembler**: New `disasm`/`d` commands for 6502 assembly disassembly
-  - Shows actual operand values instead of generic placeholders
-  - Calculates branch targets for relative instructions
-  - Supports all 6502 addressing modes (immediate, zero page, absolute, indirect)
-  - Continuation support with return key like memory commands
-- **Memory Continuation Feature**: Press return after `mem`/`m` commands to continue viewing next memory block
-- **Single-Letter Command Aliases**: 
-  - `m` as alias for `mem` command
-  - `w` as alias for `write` command
-  - `d` as alias for `disasm` command
-- **Enhanced Stop Command**: Now displays CPU registers when stopping execution
-- **Self-Contained Launcher Script**: Global installation support with automatic fallback modes
+- Complete 6502 instruction set support with all 151 official opcodes
+- Improved MyLittle6502 core integration for enhanced accuracy
+- Comprehensive spec system for CPU instruction set completion
+- Proper C linkage with extern "C" declarations for native addon
+- Accessor functions for CPU state management in native implementation
 
 ### Fixed
-- **CPU Execution Issues**: 
-  - Fixed native addon C++ compilation errors
-  - Improved fallback CPU implementation with more 6502 instruction support
-  - Fixed ROM loading order to ensure ROM loads before CPU reset
-  - CPU now correctly starts at reset vector and executes instructions
-- **CLI Output Issues**:
-  - Removed duplicate "Execution started" and "Execution stopped" messages
-  - Fixed timing issues with async ROM loading
-- **Disassembler Output**: Now shows actual operand values (e.g., `LDA #$42` instead of `LDA #$nn`)
+- **CRITICAL**: Fixed "Unknown opcode" errors for AND (0x29), ORA, EOR, and other missing instructions
+- **CRITICAL**: Fixed false breakpoint detection caused by incorrect cycle counting
+- Fixed native addon cycle counting - now returns proper instruction cycles instead of 0
+- Fixed CPU step function to properly handle step6502() return values
+- Resolved segmentation faults in native addon execution
 
-### Improved
-- **Fallback CPU Implementation**: Added support for more 6502 instructions (LDA, STA, JMP, NOP, BRK, RTI)
-- **Memory System**: Better ROM region management and loading
-- **Documentation**: Comprehensive updates with new command examples and debugging workflows
-- **Error Handling**: Better memory region conflict resolution
+### Changed
+- Replaced incomplete fake6502 implementation with improved MyLittle6502 core
+- Updated native CPU implementation to use complete instruction set
+- Enhanced cycle timing accuracy for all instructions
+- Improved error handling and symbol resolution in native addon
 
-### Technical
-- Added comprehensive .gitignore for build artifacts
-- Enhanced instruction cycle counting and flag handling
-- Improved memory region filtering and ROM loading logic
-- Better async command processing in CLI
+### Technical Details
+- Integrated MyLittle6502 core from C-Chads repository with bug fixes
+- Added proper cycle counting mechanism that tracks instruction-specific cycles
+- Implemented accessor functions to bridge static variables in header-only implementation
+- Fixed C++ name mangling issues that prevented proper symbol linking
+- Enhanced CPU reset function to avoid memory access during initialization
+
+### Performance
+- Eliminated "unknown opcode" execution halts
+- Improved instruction execution reliability
+- Enhanced debugging accuracy with proper cycle timing
+- Reduced false positive breakpoint triggers to zero
 
 ## [1.0.0] - 2024-12-18
 
 ### Added
-- Complete 6502/65C02 CPU emulation
-- Configurable memory mapping for RAM, ROM, and I/O
+- Initial release of 6502/65C02 Homebrew Computer Emulator
+- Interactive CLI with comprehensive command set
+- Basic 6502 CPU emulation with limited instruction set
+- Memory management system with RAM, ROM, and I/O regions
 - Peripheral simulation (68B50 ACIA, 65C22 VIA)
-- Comprehensive debugging tools
-- Performance optimization and benchmarking
-- Extensive test suite
-- Complete documentation and examples
-- CLI interface with debugging commands
+- Breakpoint system and debugging tools
+- Performance profiling and optimization features
 - CC65 toolchain compatibility
-- Multiple system configuration examples
+- Multiple ROM format support (binary, Intel HEX, Motorola S-record)
+- Configurable system configurations and examples
+- Comprehensive documentation and user guide
 
-### Features
-- Accurate CPU emulation with fallback implementation
-- Memory inspection and manipulation commands
-- Step-by-step execution and breakpoint support
-- Register manipulation and status display
-- ROM loading from binary files
-- Peripheral I/O simulation
-- Performance profiling and optimization
-- Comprehensive test coverage
-- User guide and API documentation
+### Known Issues (Fixed in 1.2.0)
+- Limited instruction set causing "Unknown opcode" errors
+- False breakpoint detection due to cycle counting issues
+- Incomplete native CPU implementation

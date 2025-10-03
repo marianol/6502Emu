@@ -1,4 +1,4 @@
-# Development Guide v1.0
+# Development Guide v1.2
 
 ## Table of Contents
 

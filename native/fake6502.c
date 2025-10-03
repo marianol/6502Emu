@@ -75,15 +75,17 @@ uint8_t cpu_step(void) {
     if (nmi_pending) {
         nmi6502();
         nmi_pending = 0;
+        return 7; // Standard interrupt cycles
     } else if (irq_pending) {
         irq6502();
         irq_pending = 0;
+        return 7; // Standard interrupt cycles
     }
     
     // Execute one instruction and return cycles
-    uint32_t old_ticks = get_cycles_6502();
-    step6502();
-    return (uint8_t)(get_cycles_6502() - old_ticks);
+    // step6502() returns the cycles for this instruction directly
+    uint32_t cycles = step6502();
+    return (uint8_t)cycles;
 }
 
 // Accessor functions for the static variables in fake6502_improved.h

@@ -5,10 +5,11 @@ A cycle-accurate 6502/65C02 emulator designed for homebrew computer development,
 ## Features
 
 ### Core Emulation
-- **Accurate 6502/65C02 CPU emulation** using the fake6502 core
+- **Accurate 6502/65C02 CPU emulation** using the improved MyLittle6502 core
+- **Complete instruction set support** - all 151 official 6502 opcodes implemented
 - **Cycle-accurate timing** for authentic hardware behavior
 - **Configurable clock speeds** from 1KHz to 10MHz with adaptive control
-- **Comprehensive instruction set** support including undocumented opcodes
+- **Dual-mode architecture** - native C implementation with TypeScript fallback
 
 ### Memory Management
 - **Flexible memory mapping** for RAM, ROM, and I/O regions
@@ -218,7 +219,9 @@ The project includes several pre-configured system examples:
 
 The emulator achieves excellent performance through various optimizations:
 
-- **Native CPU core** using fake6502 C implementation
+- **Native CPU core** using improved MyLittle6502 C implementation
+- **Complete instruction set** - no more "unknown opcode" errors
+- **Accurate cycle counting** - proper timing for all instructions
 - **Memory access caching** for frequently accessed addresses
 - **Optimized breakpoint checking** with binary search for large sets
 - **Adaptive peripheral polling** to reduce overhead
@@ -228,6 +231,7 @@ Typical performance on modern hardware:
 - **1-5 million instructions per second** in real-time mode
 - **10+ million instructions per second** in maximum speed mode
 - **Sub-millisecond response** for debugging commands
+- **Zero false breakpoint detections** with proper cycle handling
 
 ## Testing
 
@@ -270,8 +274,16 @@ MIT License - see LICENSE file for details.
 
 ## Version History
 
-### v1.0.0 (Current)
-- Initial release with full 6502/65C02 emulation
+### v1.2.0 (Current)
+- **Major CPU improvements**: Integrated improved MyLittle6502 core
+- **Complete instruction set**: All 151 official 6502 opcodes now supported
+- **Fixed cycle counting**: Proper timing for all instructions
+- **Resolved false breakpoints**: Fixed issue where 0-cycle returns triggered breakpoint detection
+- **Enhanced reliability**: AND, ORA, EOR, and all other missing instructions now work correctly
+- **Improved debugging**: More accurate execution tracing and timing
+
+### v1.0.0
+- Initial release with basic 6502/65C02 emulation
 - Interactive CLI with comprehensive command set
 - Peripheral simulation (ACIA, VIA)
 - Performance profiling and optimization
@@ -280,11 +292,12 @@ MIT License - see LICENSE file for details.
 
 ## Acknowledgments
 
-- **fake6502** - Mike Chambers' excellent 6502 CPU emulator core
+- **MyLittle6502** - C-Chads' improved fake6502 implementation with bug fixes and complete instruction set
+- **fake6502** - Mike Chambers' original 6502 CPU emulator core
 - **CC65** - Ullrich von Bassewitz's 6502 C compiler and toolchain
 - **6502.org** - Community resource for 6502 development
 - **Visual6502** - Transistor-level 6502 simulation project
 
 ---
 
-**6502/65C02 Homebrew Computer Emulator v1.0** - Bringing vintage computing to modern development workflows.
+**6502/65C02 Homebrew Computer Emulator v1.2** - Bringing vintage computing to modern development workflows with complete 6502 instruction set support.

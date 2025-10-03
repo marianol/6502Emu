@@ -221,6 +221,27 @@ export class EmulatorCLI {
       handler: this.handleUnbreakpoint.bind(this)
     });
 
+    this.addCommand({
+      name: 'breakpoints',
+      description: 'List all breakpoints',
+      usage: 'breakpoints',
+      handler: this.handleListBreakpoints.bind(this)
+    });
+
+    this.addCommand({
+      name: 'breaks',
+      description: 'List all breakpoints (alias for breakpoints)',
+      usage: 'breaks',
+      handler: this.handleListBreakpoints.bind(this)
+    });
+
+    this.addCommand({
+      name: 'clearbreaks',
+      description: 'Clear all breakpoints',
+      usage: 'clearbreaks',
+      handler: this.handleClearBreakpoints.bind(this)
+    });
+
     // Clock speed control
     this.addCommand({
       name: 'speed',
@@ -796,6 +817,59 @@ export class EmulatorCLI {
 
     this.emulator.getSystemBus().getCPU().removeBreakpoint(address);
     console.log(`Breakpoint removed from ${address.toString(16).toUpperCase().padStart(4, '0')}`);
+  }
+
+  private handleListBreakpoints(args: string[]): void {
+    if (args.length !== 0) {
+      console.log('Usage: breakpoints');
+      return;
+    }
+
+    const cpu = this.emulator.getSystemBus().getCPU();
+    
+    // We need to check which addresses have breakpoints
+    // Since there's no direct method to list breakpoints, we'll check a reasonable range
+    const breakpoints: number[] = [];
+    
+    // Check common address ranges for breakpoints
+    for (let addr = 0x0000; addr <= 0xFFFF; addr++) {
+      if (cpu.hasBreakpoint(addr)) {
+        breakpoints.push(addr);
+      }
+    }
+
+    if (breakpoints.length === 0) {
+      console.log('No breakpoints set');
+    } else {
+      console.log(`Breakpoints (${breakpoints.length} total):`);
+      breakpoints.forEach((addr, index) => {
+        console.log(`  ${(index + 1).toString().padStart(2, ' ')}: ${addr.toString(16).toUpperCase().padStart(4, '0')}`);
+      });
+    }
+  }
+
+  private handleClearBreakpoints(args: string[]): void {
+    if (args.length !== 0) {
+      console.log('Usage: clearbreaks');
+      return;
+    }
+
+    const cpu = this.emulator.getSystemBus().getCPU();
+    
+    // Find all current breakpoints and remove them
+    let removedCount = 0;
+    for (let addr = 0x0000; addr <= 0xFFFF; addr++) {
+      if (cpu.hasBreakpoint(addr)) {
+        cpu.removeBreakpoint(addr);
+        removedCount++;
+      }
+    }
+
+    if (removedCount === 0) {
+      console.log('No breakpoints to clear');
+    } else {
+      console.log(`Cleared ${removedCount} breakpoint${removedCount === 1 ? '' : 's'}`);
+    }
   }
 
   private handleSpeed(args: string[]): void {

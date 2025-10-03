@@ -57,6 +57,8 @@ export declare class EmulatorCLI {
     private handlePoke;
     private handleBreakpoint;
     private handleUnbreakpoint;
+    private handleListBreakpoints;
+    private handleClearBreakpoints;
     private handleSpeed;
     private handleHelp;
     private handleRegions;

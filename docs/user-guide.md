@@ -1,4 +1,4 @@
-# 6502 Emulator User Guide v1.0
+# 6502 Emulator User Guide v1.2
 
 ## Table of Contents
 
@@ -15,12 +15,15 @@
 
 ## Introduction
 
-The 6502 Emulator v1.0 is a cycle-accurate emulator designed for homebrew computer development. It provides:
+The 6502 Emulator v1.2 is a cycle-accurate emulator designed for homebrew computer development. It provides:
 
-- Accurate 6502/65C02 CPU emulation using the fake6502 core
+- **Complete 6502/65C02 CPU emulation** using the improved MyLittle6502 core
+- **All 151 official 6502 opcodes** - no more "unknown opcode" errors
+- **Accurate cycle timing** for all instructions
+- **Dual-mode architecture** - native C implementation with TypeScript fallback
 - Configurable memory mapping for RAM, ROM, and I/O
 - Peripheral simulation (68B50 ACIA, 65C22 VIA)
-- Comprehensive debugging tools
+- Comprehensive debugging tools with reliable breakpoint detection
 - CC65 toolchain compatibility
 - Performance profiling and optimization
 
@@ -44,7 +47,7 @@ npm install
 npm run build
 ```
 
-This compiles the fake6502 native addon for optimal performance.
+This compiles the improved MyLittle6502 native addon for optimal performance with complete instruction set support.
 
 ## Quick Start
 

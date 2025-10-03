@@ -40,11 +40,12 @@ This document evaluates open-source 6502/65C02 emulators for integration into ou
 - Implement TypeScript wrapper around native module
 - Add 65C02 instruction extensions manually if needed
 
-### 2. fake6502 (C Library)
+### 2. MyLittle6502 (Improved fake6502)
 
-**Repository**: https://github.com/gianlucag/fake6502
+**Repository**: https://github.com/C-Chads/MyLittle6502
 **License**: Public Domain
-**Language**: C
+**Language**: C (Header-only)
+**Based on**: Original fake6502 by Mike Chambers with significant improvements
 **Last Updated**: 2021
 
 **Pros**:
@@ -119,7 +120,7 @@ This document evaluates open-source 6502/65C02 emulators for integration into ou
 
 ## Recommendation
 
-### Primary Choice: fake6502 with Node.js Native Addon
+### Primary Choice: MyLittle6502 with Node.js Native Addon
 
 **Rationale**:
 1. **Public Domain License**: No licensing restrictions for any use case
@@ -130,9 +131,10 @@ This document evaluates open-source 6502/65C02 emulators for integration into ou
 
 **Implementation Plan**:
 1. Create Node.js native addon using node-gyp
-2. Wrap fake6502 C code with TypeScript interface
-3. Add 65C02 instruction extensions
+2. Wrap MyLittle6502 header-only implementation with TypeScript interface
+3. Complete 6502 instruction set already included (all 151 opcodes)
 4. Implement memory callback system for homebrew hardware
+5. Add accessor functions for CPU state management
 5. Add debugging and tracing capabilities
 
 ### Secondary Choice: 6502.ts
