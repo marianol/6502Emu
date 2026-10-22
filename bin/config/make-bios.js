@@ -59,10 +59,11 @@ const BANNER_STR = "6502 BIOS ready\r\n> ";
 // Master-reset ACIA
 at(0x8000,  0xA9, 0x03,              // LDA #$03  (master reset)
             0x8D, lo(ACIA_CTRL), hi(ACIA_CTRL)); // STA $7F70
-// Configure 8N1, /1 clock divide (bits 0-1=00), no interrupts
-// $14 = 0001 0100: bits 0-1=00 (/1 → full 28800 baud), bits 2-4=101 (8N1)
-// Using /1 avoids the effective 1800 baud rate that /16 would give
-at(0x8005,  0xA9, 0x14,              // LDA #$14  (8N1, /1 clock, no interrupts)
+// Configure 8N1, /16 clock divide, no interrupts
+// $15 = 0001 0101: bits 0-1=01 (/16), bits 2-4=101 (8N1)
+// With 1.8432MHz clock: effective baud = 1843200/16/4 = 28800 baud
+// cyclesPerChar = (1843200 / (28800/16)) * 10 = 10240 cycles
+at(0x8005,  0xA9, 0x15,              // LDA #$15  (8N1, /16 clock, no interrupts)
             0x8D, lo(ACIA_CTRL), hi(ACIA_CTRL)); // STA $7F70
 // Load ZP pointer with banner address
 at(0x800A,  0xA9, lo(BANNER),        // LDA #<BANNER

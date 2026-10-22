@@ -3,7 +3,7 @@
   "description": "Simple 6502-based homebrew computer with ACIA and VIA",
   "cpu": {
     "type": "65C02",
-    "clockSpeed": 1000000
+    "clockSpeed": 1843200
   },
   "memory": {
     "ramSize": "0x7F00",

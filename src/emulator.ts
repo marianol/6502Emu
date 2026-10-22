@@ -163,6 +163,7 @@ export class Emulator {
     // Configure ACIA if specified
     if (this.config.peripherals.acia) {
       const acia = new ACIA68B50();
+      acia.setCpuFrequency(this.config.cpu.clockSpeed);
       acia.setBaudRate(this.config.peripherals.acia.baudRate);
       
       // Choose serial port backend:
