@@ -922,12 +922,44 @@ export class EmulatorCLI {
 
   private handleRegions(): void {
     const memory = this.emulator.getSystemBus().getMemory();
+    const peripherals = this.emulator.getSystemBus().getPeripheralHub().getPeripherals();
     const regions = memory.getMemoryMap();
-    
-    console.log(`Memory Regions (${regions.length} total):`);
-    regions.forEach((region, index) => {
-      console.log(`  ${index}: ${region.type}: ${region.start.toString(16).toUpperCase().padStart(4, '0')}-${region.end.toString(16).toUpperCase().padStart(4, '0')}`);
+
+    // Combine memory regions and peripherals into one sorted list
+    type Region = { start: number; end: number; type: string; label: string };
+    const all: Region[] = [];
+
+    regions.forEach(region => {
+      all.push({
+        start: region.start,
+        end: region.end,
+        type: region.type,
+        label: region.type
+      });
     });
+
+    peripherals.forEach(p => {
+      const size = p.endAddress - p.startAddress + 1;
+      all.push({
+        start: p.startAddress,
+        end: p.endAddress,
+        type: 'I/O',
+        label: `${p.name} (${size} byte${size !== 1 ? 's' : ''})`
+      });
+    });
+
+    all.sort((a, b) => a.start - b.start);
+
+    console.log(`\nMemory Map (${all.length} regions):`);
+    console.log(`  ${'Start'.padEnd(6)} ${'End'.padEnd(6)} ${'Size'.padEnd(7)} Type`);
+    console.log(`  ${'------'} ${'------'} ${'-------'} ----`);
+    all.forEach(r => {
+      const start = `$${r.start.toString(16).toUpperCase().padStart(4, '0')}`;
+      const end   = `$${r.end.toString(16).toUpperCase().padStart(4, '0')}`;
+      const size  = (r.end - r.start + 1).toString().padEnd(7);
+      console.log(`  ${start.padEnd(6)} ${end.padEnd(6)} ${size} ${r.label}`);
+    });
+    console.log('');
   }
 
 
