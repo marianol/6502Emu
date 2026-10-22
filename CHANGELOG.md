@@ -5,7 +5,51 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2024-12-19
+## [1.3.0] - 2026-10-22
+
+### Added
+- **Live serial terminal via socat** — ACIA now creates a clean raw PTY pair using socat.
+  Connect any terminal program (`screen /dev/ttysN 28800`) and get full bidirectional
+  serial I/O with zero character corruption. Set `"serialPort": "pty"` in your config.
+- **`registerSize` config field** for ACIA and VIA — controls how many bytes the peripheral
+  occupies in the address space, enabling correct partial address decoding (e.g. ACIA
+  mirrored across `$7F70–$7F73` with `registerSize: 4`).
+- **Hex address support in config files** — all numeric fields now accept `"0xE000"` strings
+  alongside plain decimal integers.
+- **ROM paths resolve relative to config file** — keep your config and ROM images in the same
+  folder; paths resolve from the config's location regardless of where the emulator was launched.
+- **`load` command path resolution** — relative paths in the `load` command now resolve from
+  the directory you launched the emulator from (`EMU_LAUNCH_DIR`), not the process CWD.
+- **`regions` command shows peripherals** — ACIA, VIA, and all registered peripherals now
+  appear in the memory map alongside RAM and ROM, sorted by address.
+- **`serialdebug` command** — toggles a live hex dump of every ACIA TX byte to the CLI
+  console, letting you verify serial output without a terminal program.
+- **ACIA clock frequency config** — `setCpuFrequency()` lets the ACIA timing model use the
+  actual configured CPU clock. Supports baud-rate crystals (e.g. 1.8432 MHz → exact 28800 baud
+  with `/16` divide, `cyclesPerBit = 1024`).
+- **`Emulator.shutdown()`** — cleanly closes serial ports and PTY processes on exit, preventing
+  the `quit` command from hanging.
+- **Full reference config** (`examples/full-reference-config.yaml`) — annotated YAML documenting
+  every available option with explanations, valid values, and practical advice.
+- **Test BIOS** (`bin/config/BIOS.bin` / `make-bios.js`) — minimal 65C02 BIOS that initialises
+  the ACIA, prints a startup banner, and echoes received characters. No assembler required.
+- All example configs updated: hex addresses, `registerSize`, corrected RAM/IO layouts,
+  ROM paths relative to config file.
+
+### Fixed
+- ACIA `CTS`/`DCD` status bits now asserted at startup (were always 0, blocking firmware
+  that checks CTS before transmitting).
+- `quit`/`exit` no longer hangs when a PTY serial port is active.
+- Regression: ROM path resolution fix restored after being lost in a previous edit.
+
+### Changed
+- Serial port backend for ACIA is now selected via `serialPort` in config:
+  `"pty"` → socat raw PTY (recommended), omit → console stdout.
+- `node_modules/`, `dist/`, and `build/` removed from git tracking (were committed
+  despite being in `.gitignore`).
+- Default clock speed for simple6502 config updated to 1.8432 MHz to match real SBC hardware.
+
+
 
 ### Added
 - Complete 6502 instruction set support with all 151 official opcodes
