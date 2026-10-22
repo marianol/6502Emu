@@ -299,21 +299,24 @@ export class NullSerialPort implements SerialPort {
 }
 
 /**
- * PTY-based serial port — creates a pseudo-terminal pair so an external
- * terminal program (screen, minicom, picocom) can connect to the ACIA
- * while the emulator is running.
+ * PTY-based serial port using socat to create a clean raw pseudo-terminal pair.
  *
- * On startup the slave PTY path is printed to the console, e.g.:
- *   ACIA PTY ready — connect with: screen /dev/ttys004
+ * socat creates two linked PTY devices with raw,echo=0 — no line discipline,
+ * no echo, no CR/LF translation. Node owns one end as a plain file descriptor;
+ * the other end is a /dev/ttysNNN path you connect screen/minicom to.
  *
- * Works on macOS, Linux, and Windows (via node-pty's ConPTY support).
+ * Works on macOS and Linux. Requires socat to be installed:
+ *   macOS:  brew install socat
+ *   Linux:  apt install socat / yum install socat
  */
 export class PtySerialPort implements SerialPort {
-  private pty: import('node-pty').IPty | null = null;
+  private masterFd: number = -1;
+  private slavePath: string = '';
   private receiveBuffer: number[] = [];
   private baudRate: number = 9600;
-  private slavePath: string = '';
   private ready: boolean = false;
+  private socatProcess: import('child_process').ChildProcess | null = null;
+  private readBuffer: Buffer = Buffer.alloc(256);
 
   constructor(baudRate: number = 9600) {
     this.baudRate = baudRate;
@@ -322,96 +325,111 @@ export class PtySerialPort implements SerialPort {
 
   private open(): void {
     try {
-      const nodePty = require('node-pty');
-      const { execFileSync } = require('child_process');
+      const { spawnSync } = require('child_process');
+      const fs = require('fs');
 
-      const ptyProcess = nodePty.spawn(process.platform === 'win32' ? 'cmd.exe' : 'cat', [], {
-        name: 'xterm-raw',
-        cols: 80,
-        rows: 24,
-        env: process.env as { [key: string]: string }
+      // Ask socat to create a PTY pair and print both paths to stdout.
+      // pty,raw,echo=0  — raw bytes, no echo, no line processing on both ends.
+      // We use a short timeout so the paths are printed before we continue.
+      const result = spawnSync('socat', [
+        '-d', '-d',
+        'pty,raw,echo=0,link=/tmp/6502_pty_master',
+        'pty,raw,echo=0,link=/tmp/6502_pty_slave'
+      ], {
+        detached: true,
+        stdio: ['ignore', 'ignore', 'pipe'],
+        timeout: 2000
       });
 
-      this.pty = ptyProcess;
+      // socat prints the pty paths to stderr with -d -d
+      const stderr = result.stderr?.toString() || '';
+      const paths = [...stderr.matchAll(/\/dev\/ttys\w+/g)].map(m => m[0]);
 
-      // Get the slave PTY path
-      const ptyAny = ptyProcess as any;
-      if (ptyAny._pty) {
-        this.slavePath = ptyAny._pty;
-      } else if (typeof ptyAny.process === 'string') {
-        this.slavePath = ptyAny.process;
+      if (paths.length < 2) {
+        throw new Error(`socat did not report two PTY paths. stderr: ${stderr}`);
       }
 
-      // Put the slave side into raw mode so the macOS tty line discipline
-      // does not echo characters back, translate CR/LF, or buffer lines.
-      // Without this, terminal programs see every other character dropped
-      // or duplicated due to the OS processing the data stream.
-      if (this.slavePath && process.platform !== 'win32') {
-        try {
-          execFileSync('stty', [
-            '-f', this.slavePath,  // macOS uses -f; Linux uses -F
-            'raw',                 // disable all line processing
-            '-echo',               // no echo
-            '-echoe',              // no erase echo
-            '-echok',              // no kill echo
-            '-echonl',             // no newline echo
-            '-onlcr',              // don't translate LF → CR+LF on output
-            '-icrnl',              // don't translate CR → LF on input
-            '-ixon',               // disable XON/XOFF flow control
-            'cs8',                 // 8-bit characters
-            '-cstopb',             // 1 stop bit
-            '-parenb',             // no parity
-          ]);
-        } catch {
-          // stty -f is macOS syntax; try Linux -F
-          try {
-            execFileSync('stty', ['-F', this.slavePath, 'raw', '-echo', '-onlcr', '-icrnl', 'cs8']);
-          } catch {
-            // stty unavailable — PTY will still work but may have line discipline issues
-            console.warn('PtySerialPort: could not set raw mode on slave PTY');
-          }
-        }
-      }
-
-      // Incoming data from the terminal → ACIA receive buffer
-      ptyProcess.onData((data: string) => {
-        for (let i = 0; i < data.length; i++) {
-          this.receiveBuffer.push(data.charCodeAt(i) & 0xFF);
-        }
+      // socat keeps running in the background bridging the two ptys.
+      // We re-launch it as a background daemon process.
+      const { spawn } = require('child_process');
+      this.socatProcess = spawn('socat', [
+        '-d', '-d',
+        'pty,raw,echo=0,link=/tmp/6502_pty_master',
+        'pty,raw,echo=0,link=/tmp/6502_pty_slave'
+      ], {
+        detached: true,
+        stdio: 'ignore'
       });
+      this.socatProcess!.unref();
 
-      ptyProcess.onExit(() => {
-        this.ready = false;
-      });
+      // Give socat a moment to create the symlinks
+      const sleep = (ms: number) => {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {}
+      };
+      sleep(200);
+
+      // Our end: open the master symlink as a raw fd
+      this.masterFd = fs.openSync('/tmp/6502_pty_master', 'r+');
+      this.slavePath = '/tmp/6502_pty_slave';
+
+      // The slave path is what the user connects screen to
+      // Resolve the symlink to show the real device name too
+      try {
+        const real = require('fs').realpathSync('/tmp/6502_pty_slave');
+        this.slavePath = real;
+      } catch { /* keep symlink path */ }
 
       this.ready = true;
+
+      // Start async read loop
+      this.scheduleRead();
+
       console.log(`\n┌─────────────────────────────────────────────────┐`);
-      console.log(`│  ACIA PTY ready                                 │`);
+      console.log(`│  ACIA PTY ready (via socat)                     │`);
       console.log(`│  Connect with:                                  │`);
       console.log(`│  screen ${(this.slavePath + ' ' + this.baudRate).padEnd(40)} │`);
       console.log(`└─────────────────────────────────────────────────┘\n`);
 
     } catch (err) {
-      console.warn(`PtySerialPort: failed to open PTY (${err}), falling back to console output`);
+      console.warn(`PtySerialPort: socat PTY failed (${err})\nFalling back to console output.`);
+      console.warn(`Install socat for full PTY support: brew install socat`);
       this.ready = false;
     }
   }
 
-  /** Send a byte from the ACIA transmitter out to the terminal */
+  private scheduleRead(): void {
+    if (this.masterFd < 0 || !this.ready) return;
+    const fs = require('fs');
+    // Non-blocking read from master fd
+    fs.read(this.masterFd, this.readBuffer, 0, this.readBuffer.length, null,
+      (err: any, bytesRead: number) => {
+        if (!err && bytesRead > 0) {
+          for (let i = 0; i < bytesRead; i++) {
+            this.receiveBuffer.push(this.readBuffer[i]);
+          }
+        }
+        if (this.ready) {
+          // Schedule next read immediately
+          setImmediate(() => this.scheduleRead());
+        }
+      }
+    );
+  }
+
   write(data: number): void {
-    if (this.pty && this.ready) {
-      this.pty.write(String.fromCharCode(data & 0xFF));
+    if (this.masterFd >= 0 && this.ready) {
+      const fs = require('fs');
+      try {
+        fs.writeSync(this.masterFd, Buffer.from([data & 0xFF]));
+      } catch { /* ignore write errors on closed fd */ }
     } else {
-      // Fallback: write to stdout if PTY is not available
       process.stdout.write(String.fromCharCode(data & 0xFF));
     }
   }
 
-  /** Read the next byte received from the terminal */
   read(): number | null {
-    return this.receiveBuffer.length > 0
-      ? this.receiveBuffer.shift()!
-      : null;
+    return this.receiveBuffer.length > 0 ? this.receiveBuffer.shift()! : null;
   }
 
   hasData(): boolean {
@@ -424,26 +442,29 @@ export class PtySerialPort implements SerialPort {
 
   setBaudRate(rate: number): void {
     this.baudRate = rate;
-    // Note: PTY baud rate is simulated in the ACIA timing — the host PTY
-    // always runs at whatever speed the OS allows. The ACIA timing model
-    // still throttles characters at the configured baud rate.
   }
 
   getBaudRate(): number {
     return this.baudRate;
   }
 
-  /** Path to the slave PTY device (e.g. /dev/ttys004) */
   getSlavePath(): string {
     return this.slavePath;
   }
 
   close(): void {
-    if (this.pty) {
-      this.pty.kill();
-      this.pty = null;
-    }
     this.ready = false;
+    if (this.masterFd >= 0) {
+      try { require('fs').closeSync(this.masterFd); } catch { /* ignore */ }
+      this.masterFd = -1;
+    }
+    if (this.socatProcess) {
+      try { this.socatProcess.kill(); } catch { /* ignore */ }
+      this.socatProcess = null;
+    }
+    // Clean up symlinks
+    try { require('fs').unlinkSync('/tmp/6502_pty_master'); } catch { /* ignore */ }
+    try { require('fs').unlinkSync('/tmp/6502_pty_slave'); } catch { /* ignore */ }
     this.receiveBuffer = [];
   }
 }
