@@ -266,6 +266,13 @@ export class EmulatorCLI {
     });
 
     this.addCommand({
+      name: 'serialdebug',
+      description: 'Toggle hex dump of ACIA TX bytes to console (for debugging serial output)',
+      usage: 'serialdebug',
+      handler: this.handleSerialDebug.bind(this)
+    });
+
+    this.addCommand({
       name: 'help',
       description: 'Show available commands',
       usage: 'help [command]',
@@ -972,11 +979,48 @@ export class EmulatorCLI {
     console.log(`License: ${packageJson.license}`);
   }
 
+  private serialDebugEnabled: boolean = false;
+
+  private handleSerialDebug(): void {
+    const acia = this.emulator.getAcia();
+    if (!acia) {
+      console.log('No ACIA configured.');
+      return;
+    }
+
+    this.serialDebugEnabled = !this.serialDebugEnabled;
+
+    if (this.serialDebugEnabled) {
+      let lineHex = '';
+      let lineAscii = '';
+      let col = 0;
+
+      acia.setTxDebugCallback((byte: number) => {
+        const h = byte.toString(16).toUpperCase().padStart(2, '0');
+        const c = (byte >= 0x20 && byte < 0x7F) ? String.fromCharCode(byte) : '.';
+        lineHex   += h + ' ';
+        lineAscii += c;
+        col++;
+        if (col === 16 || byte === 0x0A) {
+          process.stdout.write(`[SERIAL TX] ${lineHex.padEnd(48)} |${lineAscii}|\n`);
+          lineHex = ''; lineAscii = ''; col = 0;
+        }
+      });
+      console.log('Serial debug ON — ACIA TX bytes will be shown as hex dump.');
+    } else {
+      acia.setTxDebugCallback(null);
+      console.log('Serial debug OFF.');
+    }
+  }
+
   private handleQuit(): void {
     console.log('Goodbye!');
     this.emulator.stop();
+    this.emulator.shutdown();
     this.running = false;
     this.rl.close();
+    // Force exit to ensure PTY and any other async resources are released
+    process.exit(0);
   }
 }
 

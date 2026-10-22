@@ -54,6 +54,12 @@ export class Emulator {
   private profiler: EmulatorProfiler;
   private optimizer: EmulatorOptimizer;
   private speedController: ExecutionSpeedController;
+
+  // Active serial port — kept so shutdown() can close it cleanly
+  private activeSerialPort: import('./peripherals/serial-port').SerialPort | null = null;
+
+  // Active ACIA — kept so CLI can attach debug callbacks
+  private activeAcia: import('./peripherals/acia').ACIA68B50 | null = null;
   
   // Execution control
   private executionTimer?: NodeJS.Timeout;
@@ -165,6 +171,7 @@ export class Emulator {
       const acia = new ACIA68B50();
       acia.setCpuFrequency(this.config.cpu.clockSpeed);
       acia.setBaudRate(this.config.peripherals.acia.baudRate);
+      this.activeAcia = acia;
       
       // Choose serial port backend:
       //   serialPort: "pty"   → PTY pair; connect with screen/minicom/picocom
@@ -173,9 +180,11 @@ export class Emulator {
       if (this.config.peripherals.acia.serialPort === 'pty') {
         const ptyPort = new PtySerialPort(this.config.peripherals.acia.baudRate);
         acia.connectSerial(ptyPort);
+        this.activeSerialPort = ptyPort;
       } else {
         const consolePort = new ConsoleSerialPort();
         acia.connectSerial(consolePort);
+        this.activeSerialPort = consolePort;
         if (this.config.peripherals.acia.serialPort) {
           console.log(`Note: real serial port connection not yet implemented; using console output`);
         }
@@ -520,6 +529,25 @@ export class Emulator {
    */
   setAdaptiveSpeed(enabled: boolean): void {
     this.speedController.setAdaptiveMode(enabled);
+  }
+
+  /**
+   * Get the active ACIA peripheral (if configured)
+   */
+  getAcia(): import('./peripherals/acia').ACIA68B50 | null {
+    return this.activeAcia;
+  }
+
+  /**
+   * Shut down the emulator and release all resources (serial ports, timers).
+   * Call before process.exit() to avoid hangs.
+   */
+  shutdown(): void {
+    this.stop();
+    if (this.activeSerialPort) {
+      this.activeSerialPort.close();
+      this.activeSerialPort = null;
+    }
   }
 
   /**
