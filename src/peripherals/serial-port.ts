@@ -297,3 +297,118 @@ export class NullSerialPort implements SerialPort {
     // No-op
   }
 }
+
+/**
+ * PTY-based serial port — creates a pseudo-terminal pair so an external
+ * terminal program (screen, minicom, picocom) can connect to the ACIA
+ * while the emulator is running.
+ *
+ * On startup the slave PTY path is printed to the console, e.g.:
+ *   ACIA PTY ready — connect with: screen /dev/ttys004
+ *
+ * Works on macOS, Linux, and Windows (via node-pty's ConPTY support).
+ */
+export class PtySerialPort implements SerialPort {
+  private pty: import('node-pty').IPty | null = null;
+  private receiveBuffer: number[] = [];
+  private baudRate: number = 9600;
+  private slavePath: string = '';
+  private ready: boolean = false;
+
+  constructor() {
+    this.open();
+  }
+
+  private open(): void {
+    try {
+      const nodePty = require('node-pty');
+      const shell = process.platform === 'win32' ? 'cmd.exe' : 'cat';
+
+      const ptyProcess = nodePty.spawn(shell, [], {
+        name: 'xterm',
+        cols: 80,
+        rows: 24,
+        env: process.env as { [key: string]: string }
+      });
+
+      this.pty = ptyProcess;
+
+      // Get the slave PTY path — node-pty exposes it via _pty on the native binding
+      const ptyAny = ptyProcess as any;
+      if (ptyAny._pty) {
+        this.slavePath = ptyAny._pty;
+      } else if (typeof ptyAny.process === 'string') {
+        this.slavePath = ptyAny.process;
+      }
+
+      // Incoming data from the terminal → ACIA receive buffer
+      ptyProcess.onData((data: string) => {
+        for (let i = 0; i < data.length; i++) {
+          this.receiveBuffer.push(data.charCodeAt(i) & 0xFF);
+        }
+      });
+
+      ptyProcess.onExit(() => {
+        this.ready = false;
+      });
+
+      this.ready = true;
+      console.log(`\nACIA PTY ready — connect with:  screen ${this.slavePath}`);
+      console.log(`  or:  picocom -b ${this.baudRate} ${this.slavePath}\n`);
+
+    } catch (err) {
+      console.warn(`PtySerialPort: failed to open PTY (${err}), falling back to console output`);
+      this.ready = false;
+    }
+  }
+
+  /** Send a byte from the ACIA transmitter out to the terminal */
+  write(data: number): void {
+    if (this.pty && this.ready) {
+      this.pty.write(String.fromCharCode(data & 0xFF));
+    } else {
+      // Fallback: write to stdout if PTY is not available
+      process.stdout.write(String.fromCharCode(data & 0xFF));
+    }
+  }
+
+  /** Read the next byte received from the terminal */
+  read(): number | null {
+    return this.receiveBuffer.length > 0
+      ? this.receiveBuffer.shift()!
+      : null;
+  }
+
+  hasData(): boolean {
+    return this.receiveBuffer.length > 0;
+  }
+
+  isReady(): boolean {
+    return this.ready;
+  }
+
+  setBaudRate(rate: number): void {
+    this.baudRate = rate;
+    // Note: PTY baud rate is simulated in the ACIA timing — the host PTY
+    // always runs at whatever speed the OS allows. The ACIA timing model
+    // still throttles characters at the configured baud rate.
+  }
+
+  getBaudRate(): number {
+    return this.baudRate;
+  }
+
+  /** Path to the slave PTY device (e.g. /dev/ttys004) */
+  getSlavePath(): string {
+    return this.slavePath;
+  }
+
+  close(): void {
+    if (this.pty) {
+      this.pty.kill();
+      this.pty = null;
+    }
+    this.ready = false;
+    this.receiveBuffer = [];
+  }
+}

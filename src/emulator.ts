@@ -8,7 +8,7 @@ import { SystemConfig, SystemConfigLoader } from './config/system';
 import { MemoryInspectorImpl } from './debug/memory-inspector';
 import { DebugInspectorImpl } from './debug/inspector';
 import { ACIA68B50 } from './peripherals/acia';
-import { ConsoleSerialPort } from './peripherals/serial-port';
+import { ConsoleSerialPort, PtySerialPort } from './peripherals/serial-port';
 import { VIA65C22Implementation } from './peripherals/via';
 import { CC65SymbolParser } from './cc65/symbol-parser';
 import { CC65MemoryConfigurator } from './cc65/memory-layout';
@@ -165,13 +165,20 @@ export class Emulator {
       const acia = new ACIA68B50();
       acia.setBaudRate(this.config.peripherals.acia.baudRate);
       
-      // Connect console serial port so transmitted bytes appear on stdout
-      // and CTS/DCD signals are asserted (required by most firmware)
-      const serialPort = new ConsoleSerialPort();
-      acia.connectSerial(serialPort);
-      
-      if (this.config.peripherals.acia.serialPort) {
-        console.log(`ACIA configured for serial port: ${this.config.peripherals.acia.serialPort} (note: real serial port connection not yet implemented, using console)`);
+      // Choose serial port backend:
+      //   serialPort: "pty"   → PTY pair; connect with screen/minicom/picocom
+      //   serialPort: <path>  → reserved for future real serial port support
+      //   (omitted)           → console stdout (useful for simple testing)
+      if (this.config.peripherals.acia.serialPort === 'pty') {
+        const ptyPort = new PtySerialPort();
+        ptyPort.setBaudRate(this.config.peripherals.acia.baudRate);
+        acia.connectSerial(ptyPort);
+      } else {
+        const consolePort = new ConsoleSerialPort();
+        acia.connectSerial(consolePort);
+        if (this.config.peripherals.acia.serialPort) {
+          console.log(`Note: real serial port connection not yet implemented; using console output`);
+        }
       }
       
       const aciaSize = this.config.peripherals.acia.registerSize ?? 2;

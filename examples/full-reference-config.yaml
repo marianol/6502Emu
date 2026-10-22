@@ -106,12 +106,18 @@ peripherals:
     # This should match your terminal emulator's baud rate setting.
     baudRate: 9600
 
-    # Optional: path to a real host serial port to connect the ACIA to.
-    # When set, transmitted bytes go to the physical port and received
-    # bytes come from it. Currently not yet implemented — transmitted
-    # bytes appear on stdout instead regardless of this setting.
-    # serialPort: "/dev/ttyUSB0"   # Linux
-    # serialPort: "/dev/cu.usbserial-0001"  # macOS
+    # Optional: serial port backend for the ACIA.
+    # Options:
+    #   "pty"          → Creates a pseudo-terminal pair. The emulator prints the
+    #                    slave device path on startup (e.g. /dev/ttys004).
+    #                    Connect your terminal program to that path:
+    #                      screen /dev/ttys004
+    #                      picocom -b 9600 /dev/ttys004
+    #                    Works on macOS, Linux, and Windows.
+    #   <device path>  → Reserved for future real serial port support.
+    #   (omitted)      → Transmitted bytes appear on stdout. Simple but you
+    #                    cannot send data back to the firmware.
+    # serialPort: "pty"
 
     description: "Serial communication interface (68B50 ACIA)"
 

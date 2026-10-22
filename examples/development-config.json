@@ -28,7 +28,7 @@
       "baseAddress": "0x7F70",
       "registerSize": 4,
       "baudRate": 115200,
-      "serialPort": "/dev/ttyUSB0",
+      "serialPort": "pty",
       "description": "High-speed serial interface for debugging"
     },
     "via": {

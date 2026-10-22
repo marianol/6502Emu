@@ -22,7 +22,8 @@
       "baseAddress": "0x7F70",
       "registerSize": 4,
       "baudRate": 28800,
-      "description": "Serial communication interface"
+      "serialPort": "pty",
+      "description": "Serial communication interface — connect with: screen /dev/ttys<N>"
     },
     "via": {
       "baseAddress": "0x7F20",
