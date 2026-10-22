@@ -191,24 +191,24 @@ Create a JSON configuration file to define your system:
     "clockSpeed": 1000000
   },
   "memory": {
-    "ramSize": 32768,
-    "ramStart": 0,
+    "ramSize": "0x7F00",
+    "ramStart": "0x0000",
     "romImages": [
       {
-        "file": "monitor.bin",
-        "loadAddress": 57344,
+        "file": "BIOS.bin",
+        "loadAddress": "0x8000",
         "format": "binary"
       }
     ]
   },
   "peripherals": {
     "acia": {
-      "baseAddress": 32768,
+      "baseAddress": "0x7F70",
       "baudRate": 9600,
       "serialPort": "/dev/ttyUSB0"
     },
     "via": {
-      "baseAddress": 32784,
+      "baseAddress": "0x7F20",
       "enableTimers": true
     }
   },
@@ -218,6 +218,52 @@ Create a JSON configuration file to define your system:
     "symbolFile": "program.sym"
   }
 }
+```
+
+### Hex Addresses in Config Files
+
+All numeric fields — addresses, sizes, and clock speeds — accept hex strings as well as plain decimal integers. Wrap the value in quotes and use the `0x` prefix:
+
+```json
+"ramSize": "0x7F00",
+"loadAddress": "0x8000",
+"baseAddress": "0x7F70"
+```
+
+Plain decimal still works fine, so both forms are valid:
+
+```json
+"loadAddress": 32768,
+"loadAddress": "0x8000"
+```
+
+### ROM File Paths
+
+ROM file paths in `romImages` can be absolute or relative. **Relative paths are resolved relative to the config file itself**, not the directory you launched the emulator from. This means you can keep your config and ROM files together in the same folder and it will work regardless of where you run `./6502-emulator` from.
+
+For example, if your layout is:
+
+```
+bin/
+  config/
+    simple6502-config.json
+    BIOS.bin
+```
+
+Then in `simple6502-config.json` you can simply write:
+
+```json
+"file": "BIOS.bin"
+```
+
+and the emulator will find it next to the config file.
+
+### Loading a Config from the CLI
+
+When running the emulator from the `bin/` directory, you can use a path relative to where you are standing:
+
+```
+6502> load config/simple6502-config.json
 ```
 
 ### Configuration Options
@@ -813,7 +859,21 @@ Warning: Read from unmapped memory: 0x1234
 Warning: Write to unmapped memory: 0x8000
 ```
 
-**Solution**: Verify peripheral configuration in your system config file and ensure addresses don't conflict with RAM.
+**Solution**: Verify peripheral configuration in your system config file and ensure addresses don't conflict with RAM. A common mistake is setting `ramSize` large enough that it overlaps the peripheral addresses — reduce `ramSize` so RAM ends before the first peripheral register.
+
+#### Configuration File Not Found
+```
+Configuration file not found: config/simple6502-config.json
+```
+
+**Solution**: Relative paths in the `load` command are resolved from the directory you launched the emulator from. If you run `./6502-emulator` from `bin/`, then `load config/simple6502-config.json` looks for `bin/config/simple6502-config.json`. Use a path that matches your actual location, or use an absolute path.
+
+#### ROM File Not Found
+```
+Failed to load configuration: Error: ENOENT: no such file or directory, open '...'
+```
+
+**Solution**: ROM file paths in `romImages` are resolved relative to the config file's own directory. Make sure the ROM file is in the same folder as the config, or use an absolute path in the `file` field.
 
 #### CLI Import Errors
 ```

@@ -351,14 +351,27 @@ export class EmulatorCLI {
     }
 
     const configFile = args[0];
-    if (!fs.existsSync(configFile)) {
+
+    // Resolve path: try as-is first, then relative to the directory the user
+    // launched the emulator from (EMU_LAUNCH_DIR), then relative to CWD.
+    let resolvedConfig = configFile;
+    if (!fs.existsSync(resolvedConfig)) {
+      const launchDir = process.env.EMU_LAUNCH_DIR;
+      if (launchDir) {
+        const launchRelative = path.resolve(launchDir, configFile);
+        if (fs.existsSync(launchRelative)) {
+          resolvedConfig = launchRelative;
+        }
+      }
+    }
+    if (!fs.existsSync(resolvedConfig)) {
       console.log(`Configuration file not found: ${configFile}`);
       return;
     }
 
     try {
-      await this.emulator.loadConfigFromFile(configFile);
-      console.log(`Configuration loaded from ${configFile}`);
+      await this.emulator.loadConfigFromFile(resolvedConfig);
+      console.log(`Configuration loaded from ${resolvedConfig}`);
     } catch (error) {
       console.error(`Failed to load configuration: ${error}`);
     }

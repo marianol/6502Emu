@@ -55,7 +55,8 @@ function runCLI() {
       console.log('Starting 6502/65C02 Emulator (built version)...');
       const cliProcess = spawn('node', [distPath], {
         stdio: 'inherit',
-        cwd: projectRoot
+        cwd: projectRoot,
+        env: { ...process.env, EMU_LAUNCH_DIR: process.cwd() }
       });
       
       cliProcess.on('exit', (code) => {
@@ -99,7 +100,8 @@ function runDevMode() {
         // ts-node is available, run the TypeScript source
         const cliProcess = spawn('npx', ['ts-node', srcPath], {
           stdio: 'inherit',
-          cwd: projectRoot
+          cwd: projectRoot,
+          env: { ...process.env, EMU_LAUNCH_DIR: process.cwd() }
         });
         
         cliProcess.on('exit', (code) => {
