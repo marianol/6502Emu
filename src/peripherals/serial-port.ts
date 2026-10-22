@@ -323,10 +323,10 @@ export class PtySerialPort implements SerialPort {
   private open(): void {
     try {
       const nodePty = require('node-pty');
-      const shell = process.platform === 'win32' ? 'cmd.exe' : 'cat';
+      const { execFileSync } = require('child_process');
 
-      const ptyProcess = nodePty.spawn(shell, [], {
-        name: 'xterm',
+      const ptyProcess = nodePty.spawn(process.platform === 'win32' ? 'cmd.exe' : 'cat', [], {
+        name: 'xterm-raw',
         cols: 80,
         rows: 24,
         env: process.env as { [key: string]: string }
@@ -334,12 +334,43 @@ export class PtySerialPort implements SerialPort {
 
       this.pty = ptyProcess;
 
-      // Get the slave PTY path — node-pty exposes it via _pty on the native binding
+      // Get the slave PTY path
       const ptyAny = ptyProcess as any;
       if (ptyAny._pty) {
         this.slavePath = ptyAny._pty;
       } else if (typeof ptyAny.process === 'string') {
         this.slavePath = ptyAny.process;
+      }
+
+      // Put the slave side into raw mode so the macOS tty line discipline
+      // does not echo characters back, translate CR/LF, or buffer lines.
+      // Without this, terminal programs see every other character dropped
+      // or duplicated due to the OS processing the data stream.
+      if (this.slavePath && process.platform !== 'win32') {
+        try {
+          execFileSync('stty', [
+            '-f', this.slavePath,  // macOS uses -f; Linux uses -F
+            'raw',                 // disable all line processing
+            '-echo',               // no echo
+            '-echoe',              // no erase echo
+            '-echok',              // no kill echo
+            '-echonl',             // no newline echo
+            '-onlcr',              // don't translate LF → CR+LF on output
+            '-icrnl',              // don't translate CR → LF on input
+            '-ixon',               // disable XON/XOFF flow control
+            'cs8',                 // 8-bit characters
+            '-cstopb',             // 1 stop bit
+            '-parenb',             // no parity
+          ]);
+        } catch {
+          // stty -f is macOS syntax; try Linux -F
+          try {
+            execFileSync('stty', ['-F', this.slavePath, 'raw', '-echo', '-onlcr', '-icrnl', 'cs8']);
+          } catch {
+            // stty unavailable — PTY will still work but may have line discipline issues
+            console.warn('PtySerialPort: could not set raw mode on slave PTY');
+          }
+        }
       }
 
       // Incoming data from the terminal → ACIA receive buffer
@@ -356,8 +387,8 @@ export class PtySerialPort implements SerialPort {
       this.ready = true;
       console.log(`\n┌─────────────────────────────────────────────────┐`);
       console.log(`│  ACIA PTY ready                                 │`);
-      console.log(`│  Connect with:  screen ${this.slavePath.padEnd(24)} │`);
-      console.log(`│  or: picocom -b ${String(this.baudRate).padEnd(6)} ${this.slavePath.padEnd(17)} │`);
+      console.log(`│  Connect with:                                  │`);
+      console.log(`│  screen ${(this.slavePath + ' ' + this.baudRate).padEnd(40)} │`);
       console.log(`└─────────────────────────────────────────────────┘\n`);
 
     } catch (err) {
