@@ -13,6 +13,7 @@ import { CC65SymbolParser } from './cc65/symbol-parser';
 import { CC65MemoryConfigurator } from './cc65/memory-layout';
 import { EmulatorProfiler } from './performance/profiler';
 import { EmulatorOptimizer, ExecutionSpeedController } from './performance/optimizer';
+import * as path from 'path';
 
 /**
  * Execution state of the emulator

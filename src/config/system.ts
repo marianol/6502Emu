@@ -130,6 +130,9 @@ export class SystemConfigLoader {
         throw new ConfigurationError(`Unsupported configuration file format: ${ext}`);
       }
 
+      // Allow hex strings like "0xE000" anywhere a number is expected
+      config = this.resolveHexValues(config);
+
       return this.validateAndMergeConfig(config);
     } catch (error) {
       if (error instanceof ConfigurationError) {
@@ -232,6 +235,28 @@ export class SystemConfigLoader {
       path.join(outputDir, 'apple2-config.yaml'),
       yaml.dump(apple2Template, { indent: 2, lineWidth: 80, noRefs: true })
     );
+  }
+
+  /**
+   * Recursively convert hex strings ("0x...") to numbers throughout a config object.
+   * This lets JSON/YAML configs use hex notation for addresses even though the
+   * formats don't natively support numeric hex literals.
+   */
+  private static resolveHexValues(obj: any): any {
+    if (typeof obj === 'string' && /^0x[0-9a-fA-F]+$/.test(obj)) {
+      return parseInt(obj, 16);
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.resolveHexValues(item));
+    }
+    if (obj !== null && typeof obj === 'object') {
+      const result: any = {};
+      for (const key of Object.keys(obj)) {
+        result[key] = this.resolveHexValues(obj[key]);
+      }
+      return result;
+    }
+    return obj;
   }
 
   /**
