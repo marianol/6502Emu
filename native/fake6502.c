@@ -54,6 +54,94 @@ typedef unsigned int uint32;
 // Include the complete implementation (this will define static variables)
 #include "fake6502_improved.h"
 
+/* ── 65C02 instruction handlers ──────────────────────────────────────────
+ * CMOS-only opcodes patched into the live dispatch tables by cpu_set_type(1).
+ */
+
+static void inca_65c02(void) { a=(a+1)&0xFF; zerocalc(a); signcalc(a); }
+static void deca_65c02(void) { a=(a-1)&0xFF; zerocalc(a); signcalc(a); }
+static void phy_65c02(void)  { push_6502_8(y); }
+static void ply_65c02(void)  { y=pull_6502_8(); zerocalc(y); signcalc(y); }
+static void phx_65c02(void)  { push_6502_8(x); }
+static void plx_65c02(void)  { x=pull_6502_8(); zerocalc(x); signcalc(x); }
+
+static void bra_65c02(void) {
+    oldpc = pc;
+    pc += reladdr;
+    if ((oldpc & 0xFF00) != (pc & 0xFF00)) clockticks6502 += 2;
+    else clockticks6502++;
+}
+
+/* BIT immediate: only sets Z, not N/V */
+static void bit_imm_65c02(void) {
+    value = getvalue();
+    result = (ushort)a & value;
+    zerocalc(result);
+}
+
+/* Zero-page indirect addressing: ($zp) without Y index */
+static void zp_ind(void) {
+    uint16_t zpaddr = (uint16_t)read6502(pc++);
+    ea = (uint16_t)read6502(zpaddr) | ((uint16_t)read6502((zpaddr + 1) & 0xFF) << 8);
+}
+
+static void tsb_op(void) { value=getvalue(); zerocalc((ushort)a&value); putvalue(value|(ushort)a); }
+static void trb_op(void) { value=getvalue(); zerocalc((ushort)a&value); putvalue(value&~(ushort)a); }
+static void stz_op(void) { putvalue(0); }
+
+static void jmp_absxi(void) {
+    uint16_t base = (uint16_t)read6502(pc) | ((uint16_t)read6502(pc+1) << 8);
+    pc += 2;
+    uint16_t addr = base + x;
+    pc = (uint16_t)read6502(addr) | ((uint16_t)read6502(addr+1) << 8);
+}
+
+void cpu_set_type(int is_65c02) {
+    if (is_65c02) {
+        /* Accumulator inc/dec */
+        optable[0x1A]=inca_65c02; addrtable[0x1A]=imp; ticktable[0x1A]=2;
+        optable[0x3A]=deca_65c02; addrtable[0x3A]=imp; ticktable[0x3A]=2;
+        /* Stack push/pull X and Y */
+        optable[0x5A]=phy_65c02;  addrtable[0x5A]=imp; ticktable[0x5A]=3;
+        optable[0x7A]=ply_65c02;  addrtable[0x7A]=imp; ticktable[0x7A]=4;
+        optable[0xDA]=phx_65c02;  addrtable[0xDA]=imp; ticktable[0xDA]=3;
+        optable[0xFA]=plx_65c02;  addrtable[0xFA]=imp; ticktable[0xFA]=4;
+        /* BRA and BIT immediate */
+        optable[0x80]=bra_65c02;  addrtable[0x80]=rel; ticktable[0x80]=2;
+        optable[0x89]=bit_imm_65c02; addrtable[0x89]=imm; ticktable[0x89]=2;
+        /* Zero-page indirect (no index) */
+        optable[0x12]=ora; addrtable[0x12]=zp_ind; ticktable[0x12]=5;
+        optable[0x32]=and; addrtable[0x32]=zp_ind; ticktable[0x32]=5;
+        optable[0x52]=eor; addrtable[0x52]=zp_ind; ticktable[0x52]=5;
+        optable[0x72]=adc; addrtable[0x72]=zp_ind; ticktable[0x72]=5;
+        optable[0x92]=sta; addrtable[0x92]=zp_ind; ticktable[0x92]=5;
+        optable[0xB2]=lda; addrtable[0xB2]=zp_ind; ticktable[0xB2]=5;
+        optable[0xD2]=cmp; addrtable[0xD2]=zp_ind; ticktable[0xD2]=5;
+        optable[0xF2]=sbc; addrtable[0xF2]=zp_ind; ticktable[0xF2]=5;
+        /* TSB / TRB */
+        optable[0x04]=tsb_op; addrtable[0x04]=zp;   ticktable[0x04]=5;
+        optable[0x0C]=tsb_op; addrtable[0x0C]=abso; ticktable[0x0C]=6;
+        optable[0x14]=trb_op; addrtable[0x14]=zp;   ticktable[0x14]=5;
+        optable[0x1C]=trb_op; addrtable[0x1C]=abso; ticktable[0x1C]=6;
+        /* STZ */
+        optable[0x64]=stz_op; addrtable[0x64]=zp;   ticktable[0x64]=3;
+        optable[0x74]=stz_op; addrtable[0x74]=zpx;  ticktable[0x74]=4;
+        optable[0x9C]=stz_op; addrtable[0x9C]=abso; ticktable[0x9C]=4;
+        optable[0x9E]=stz_op; addrtable[0x9E]=absx; ticktable[0x9E]=5;
+        /* JMP (abs,X) */
+        optable[0x7C]=jmp_absxi; addrtable[0x7C]=imp; ticktable[0x7C]=6;
+    } else {
+        /* Restore NMOS NOPs for the opcodes above */
+        uint8_t c02[] = {
+            0x1A,0x3A,0x5A,0x7A,0xDA,0xFA,0x80,0x89,
+            0x12,0x32,0x52,0x72,0x92,0xB2,0xD2,0xF2,
+            0x04,0x0C,0x14,0x1C,0x64,0x74,0x9C,0x9E,0x7C
+        };
+        for (unsigned i=0; i<sizeof(c02); i++) {
+            optable[c02[i]]=nop; addrtable[c02[i]]=imp; ticktable[c02[i]]=2;
+        }
+    }
+}
 // CPU control functions
 void cpu_reset(void) {
     // Initialize CPU state without reading from memory

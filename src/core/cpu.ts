@@ -222,6 +222,9 @@ export class CPU6502Emulator implements CPU6502 {
   
   setCPUType(type: CPUType): void {
     this.cpuType = type;
+    if (this.useNativeAddon) {
+      nativeAddon.setCPUType(type === '65C02' ? 1 : 0);
+    }
   }
   
   getCPUType(): CPUType {
