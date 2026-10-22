@@ -315,7 +315,8 @@ export class PtySerialPort implements SerialPort {
   private slavePath: string = '';
   private ready: boolean = false;
 
-  constructor() {
+  constructor(baudRate: number = 9600) {
+    this.baudRate = baudRate;
     this.open();
   }
 
@@ -353,8 +354,11 @@ export class PtySerialPort implements SerialPort {
       });
 
       this.ready = true;
-      console.log(`\nACIA PTY ready — connect with:  screen ${this.slavePath}`);
-      console.log(`  or:  picocom -b ${this.baudRate} ${this.slavePath}\n`);
+      console.log(`\n┌─────────────────────────────────────────────────┐`);
+      console.log(`│  ACIA PTY ready                                 │`);
+      console.log(`│  Connect with:  screen ${this.slavePath.padEnd(24)} │`);
+      console.log(`│  or: picocom -b ${String(this.baudRate).padEnd(6)} ${this.slavePath.padEnd(17)} │`);
+      console.log(`└─────────────────────────────────────────────────┘\n`);
 
     } catch (err) {
       console.warn(`PtySerialPort: failed to open PTY (${err}), falling back to console output`);

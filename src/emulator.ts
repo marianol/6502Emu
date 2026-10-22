@@ -170,8 +170,7 @@ export class Emulator {
       //   serialPort: <path>  → reserved for future real serial port support
       //   (omitted)           → console stdout (useful for simple testing)
       if (this.config.peripherals.acia.serialPort === 'pty') {
-        const ptyPort = new PtySerialPort();
-        ptyPort.setBaudRate(this.config.peripherals.acia.baudRate);
+        const ptyPort = new PtySerialPort(this.config.peripherals.acia.baudRate);
         acia.connectSerial(ptyPort);
       } else {
         const consolePort = new ConsoleSerialPort();
