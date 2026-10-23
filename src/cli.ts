@@ -50,7 +50,7 @@ export class EmulatorCLI {
   /**
    * Start the CLI
    */
-  async start(): Promise<void> {
+  async start(autoLoadConfig?: string): Promise<void> {
     // Get version from package.json
     const packageJson = require('../package.json');
     console.log(`6502/65C02 Homebrew Computer Emulator v${packageJson.version}`);
@@ -62,6 +62,11 @@ export class EmulatorCLI {
     } catch (error) {
       console.error('Failed to initialize emulator:', error);
       process.exit(1);
+    }
+
+    // Auto-load config if provided via -l / --load
+    if (autoLoadConfig) {
+      await this.handleLoad([autoLoadConfig]);
     }
 
     this.rl.prompt();
@@ -1028,8 +1033,18 @@ export class EmulatorCLI {
  * Main entry point for CLI
  */
 export async function main(): Promise<void> {
+  // Parse -l / --load <config> from command line arguments
+  let autoLoadConfig: string | undefined;
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i++) {
+    if ((args[i] === '-l' || args[i] === '--load') && args[i + 1]) {
+      autoLoadConfig = args[i + 1];
+      break;
+    }
+  }
+
   const cli = new EmulatorCLI();
-  await cli.start();
+  await cli.start(autoLoadConfig);
 }
 
 // Run CLI if this file is executed directly

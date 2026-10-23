@@ -133,9 +133,14 @@ if (args.includes('--help') || args.includes('-h')) {
   console.log('Usage: 6502-emulator [options]');
   console.log('');
   console.log('Options:');
-  console.log('  --help, -h     Show this help message');
-  console.log('  --version, -v  Show version information');
-  console.log('  --build        Build the project before running');
+  console.log('  --help, -h            Show this help message');
+  console.log('  --version, -v         Show version information');
+  console.log('  --load, -l <config>   Load a config file on startup');
+  console.log('  --build               Build the project before running');
+  console.log('');
+  console.log('Examples:');
+  console.log('  6502-emulator -l config/simple6502-config.json');
+  console.log('  6502-emulator --load /path/to/my-system.json');
   console.log('');
   console.log('This script will automatically use the built version if available,');
   console.log('or fall back to development mode using ts-node.');
