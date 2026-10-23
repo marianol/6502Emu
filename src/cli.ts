@@ -1036,8 +1036,7 @@ export class EmulatorCLI {
 
   private handleQuit(): void {
     console.log('Goodbye!');
-    this.emulator.stop();
-    this.emulator.shutdown();
+    this.emulator.shutdown();  // stops execution and releases serial/PTY resources
     this.running = false;
     this.rl.close();
     // Force exit to ensure PTY and any other async resources are released

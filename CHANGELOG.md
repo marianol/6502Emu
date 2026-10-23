@@ -5,6 +5,20 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-10-22
+
+### Fixed
+- **`quit` no longer hangs the terminal.** The socat PTY bridge held the Node
+  event loop open through a blocking `fs.read` on the master fd. Rewritten to:
+  - Open the master PTY fd in non-blocking mode (`O_NONBLOCK`)
+  - Poll it on a timer instead of a chained blocking async read, so no syscall
+    is ever in flight at exit
+  - Spawn socat exactly once (previously spawned twice — a blocking `spawnSync`
+    then a second `spawn`, orphaning a PTY pair)
+  - Kill the socat process with SIGKILL and clear the poll timer on close()
+- Removed the duplicate "Execution stopped" message on quit. `stop()` now only
+  logs when it actually stops a running execution.
+
 ## [1.3.2] - 2026-10-22
 
 ### Changed

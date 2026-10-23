@@ -325,64 +325,49 @@ export class PtySerialPort implements SerialPort {
 
   private open(): void {
     try {
-      const { spawnSync } = require('child_process');
+      const { spawnSync, spawn } = require('child_process');
       const fs = require('fs');
 
-      // Ask socat to create a PTY pair and print both paths to stdout.
-      // pty,raw,echo=0  — raw bytes, no echo, no line processing on both ends.
-      // We use a short timeout so the paths are printed before we continue.
-      const result = spawnSync('socat', [
-        '-d', '-d',
-        'pty,raw,echo=0,link=/tmp/6502_pty_master',
-        'pty,raw,echo=0,link=/tmp/6502_pty_slave'
-      ], {
-        detached: true,
-        stdio: ['ignore', 'ignore', 'pipe'],
-        timeout: 2000
-      });
+      const masterLink = '/tmp/6502_pty_master';
+      const slaveLink  = '/tmp/6502_pty_slave';
 
-      // socat prints the pty paths to stderr with -d -d
-      const stderr = result.stderr?.toString() || '';
-      const paths = [...stderr.matchAll(/\/dev\/ttys\w+/g)].map(m => m[0]);
+      // Remove stale symlinks from a previous run
+      try { fs.unlinkSync(masterLink); } catch { /* none */ }
+      try { fs.unlinkSync(slaveLink); } catch { /* none */ }
 
-      if (paths.length < 2) {
-        throw new Error(`socat did not report two PTY paths. stderr: ${stderr}`);
-      }
-
-      // socat keeps running in the background bridging the two ptys.
-      // We re-launch it as a background daemon process.
-      const { spawn } = require('child_process');
+      // Spawn socat ONCE as a long-lived background bridge. It creates two
+      // linked raw PTYs and symlinks them to known paths. We do not capture
+      // its stderr paths — we use the stable symlinks instead.
       this.socatProcess = spawn('socat', [
-        '-d', '-d',
-        'pty,raw,echo=0,link=/tmp/6502_pty_master',
-        'pty,raw,echo=0,link=/tmp/6502_pty_slave'
+        'pty,raw,echo=0,link=' + masterLink,
+        'pty,raw,echo=0,link=' + slaveLink
       ], {
-        detached: true,
         stdio: 'ignore'
       });
-      this.socatProcess!.unref();
 
-      // Give socat a moment to create the symlinks
-      const sleep = (ms: number) => {
-        const end = Date.now() + ms;
-        while (Date.now() < end) {}
-      };
-      sleep(200);
+      // Wait (briefly, without busy-spinning) for socat to create the symlinks.
+      const deadline = Date.now() + 2000;
+      while (!fs.existsSync(masterLink) || !fs.existsSync(slaveLink)) {
+        if (Date.now() > deadline) {
+          throw new Error('socat did not create PTY symlinks within 2s');
+        }
+        // Sleep 10ms using a blocking but cheap syscall
+        spawnSync('sleep', ['0.01']);
+      }
 
-      // Our end: open the master symlink as a raw fd
-      this.masterFd = fs.openSync('/tmp/6502_pty_master', 'r+');
-      this.slavePath = '/tmp/6502_pty_slave';
+      // Open the master end NON-BLOCKING so reads return immediately instead
+      // of blocking the event loop (which previously prevented clean exit).
+      this.masterFd = fs.openSync(masterLink, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
 
-      // The slave path is what the user connects screen to
-      // Resolve the symlink to show the real device name too
+      // Resolve the slave symlink to the real device name for the user
+      this.slavePath = slaveLink;
       try {
-        const real = require('fs').realpathSync('/tmp/6502_pty_slave');
-        this.slavePath = real;
+        this.slavePath = fs.realpathSync(slaveLink);
       } catch { /* keep symlink path */ }
 
       this.ready = true;
 
-      // Start async read loop
+      // Start polling the master fd for incoming data
       this.scheduleRead();
 
       console.log(`\n┌─────────────────────────────────────────────────┐`);
@@ -398,23 +383,31 @@ export class PtySerialPort implements SerialPort {
     }
   }
 
+  private readTimer: NodeJS.Timeout | null = null;
+
   private scheduleRead(): void {
     if (this.masterFd < 0 || !this.ready) return;
     const fs = require('fs');
-    // Non-blocking read from master fd
-    fs.read(this.masterFd, this.readBuffer, 0, this.readBuffer.length, null,
-      (err: any, bytesRead: number) => {
-        if (!err && bytesRead > 0) {
-          for (let i = 0; i < bytesRead; i++) {
-            this.receiveBuffer.push(this.readBuffer[i]);
-          }
+    // Poll the non-blocking fd on a timer. EAGAIN (no data) is expected and
+    // harmless. Using a timer instead of a chained async read means there is
+    // never a pending syscall holding the event loop open at exit.
+    this.readTimer = setTimeout(() => {
+      if (!this.ready || this.masterFd < 0) return;
+      try {
+        const bytesRead = fs.readSync(this.masterFd, this.readBuffer, 0, this.readBuffer.length, null);
+        for (let i = 0; i < bytesRead; i++) {
+          this.receiveBuffer.push(this.readBuffer[i]);
         }
-        if (this.ready) {
-          // Schedule next read immediately
-          setImmediate(() => this.scheduleRead());
+      } catch (e: any) {
+        // EAGAIN / EWOULDBLOCK = no data available right now; ignore
+        if (e.code !== 'EAGAIN' && e.code !== 'EWOULDBLOCK') {
+          // Any other error: stop polling
+          this.ready = false;
+          return;
         }
       }
-    );
+      this.scheduleRead();
+    }, 2);
   }
 
   write(data: number): void {
@@ -454,12 +447,18 @@ export class PtySerialPort implements SerialPort {
 
   close(): void {
     this.ready = false;
+    // Stop the polling timer first so no read is in flight
+    if (this.readTimer) {
+      clearTimeout(this.readTimer);
+      this.readTimer = null;
+    }
     if (this.masterFd >= 0) {
       try { require('fs').closeSync(this.masterFd); } catch { /* ignore */ }
       this.masterFd = -1;
     }
+    // Kill the socat bridge process. SIGKILL to be certain it exits.
     if (this.socatProcess) {
-      try { this.socatProcess.kill(); } catch { /* ignore */ }
+      try { this.socatProcess.kill('SIGKILL'); } catch { /* ignore */ }
       this.socatProcess = null;
     }
     // Clean up symlinks

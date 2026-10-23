@@ -258,13 +258,19 @@ export class Emulator {
       clearTimeout(this.executionTimer);
       this.executionTimer = undefined;
     }
-    
-    if (this.state === EmulatorState.RUNNING) {
+
+    const wasRunning = this.state === EmulatorState.RUNNING;
+    if (wasRunning) {
       this.updateStats();
     }
-    
+
     this.state = EmulatorState.STOPPED;
-    console.log('Execution stopped');
+
+    // Only report when we actually stopped a running execution — avoids
+    // noisy "Execution stopped" lines when stop() is called on an idle system.
+    if (wasRunning) {
+      console.log('Execution stopped');
+    }
   }
 
   /**
