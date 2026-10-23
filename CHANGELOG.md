@@ -5,6 +5,29 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-10-22
+
+### Changed
+- **Startup always loads a config file.** If `-l` / `--load` is given, that config
+  is loaded; otherwise the default config (`bin/config/simple6502-config.json`) is
+  loaded. This removes the previous double-initialization where the built-in default
+  ran first and a `-l` config loaded on top, producing two configuration blocks and
+  double-registering peripherals.
+- Input handling is paused until the startup config load completes, so piped or
+  queued input can no longer race ahead of initialization.
+
+## [1.3.1] - 2026-10-22
+
+### Added
+- **`-l` / `--load <config>` command-line flag** — load a config file on startup
+  instead of typing `load ...` at the prompt:
+  `./6502-emulator -l config/simple6502-config.json`
+
+### Fixed
+- Launcher now forwards command-line arguments to the CLI process. Previously
+  flags like `-l` were parsed only by the launcher and never reached the emulator,
+  so `-l` silently had no effect.
+
 ## [1.3.0] - 2026-10-22
 
 ### Added

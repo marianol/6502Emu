@@ -50,25 +50,41 @@ export class EmulatorCLI {
   /**
    * Start the CLI
    */
-  async start(autoLoadConfig?: string): Promise<void> {
+  async start(configPath?: string): Promise<void> {
+    // Pause input handling until startup is finished so queued input
+    // (e.g. a piped "quit") can't race ahead of the config load.
+    this.rl.pause();
+
     // Get version from package.json
     const packageJson = require('../package.json');
     console.log(`6502/65C02 Homebrew Computer Emulator v${packageJson.version}`);
     console.log('Type "help" for available commands, "quit" to exit\n');
 
-    // Initialize with default configuration
-    try {
-      await this.emulator.initialize();
-    } catch (error) {
-      console.error('Failed to initialize emulator:', error);
-      process.exit(1);
+    // Load a config file on startup. If a path was given (-l / --load) use it;
+    // otherwise fall back to the default config next to the launcher. Loading
+    // a config file performs a full emulator initialization, so we do not call
+    // initialize() separately — that would double-register peripherals.
+    if (configPath) {
+      await this.handleLoad([configPath]);
+    } else {
+      // No config specified — try the default, fall back to built-in defaults.
+      const defaultConfig = process.env.EMU_DEFAULT_CONFIG;
+      if (defaultConfig && fs.existsSync(defaultConfig)) {
+        console.log(`No config specified, loading default: ${defaultConfig}`);
+        await this.handleLoad([defaultConfig]);
+      } else {
+        console.log('No config specified, starting with built-in default configuration.');
+        try {
+          await this.emulator.initialize();
+        } catch (error) {
+          console.error('Failed to initialize emulator:', error);
+          process.exit(1);
+        }
+      }
     }
 
-    // Auto-load config if provided via -l / --load
-    if (autoLoadConfig) {
-      await this.handleLoad([autoLoadConfig]);
-    }
-
+    // Startup complete — now accept input
+    this.rl.resume();
     this.rl.prompt();
 
     return new Promise((resolve) => {
