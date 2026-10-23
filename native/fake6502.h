@@ -43,6 +43,10 @@ void cpu_clear_irq(void);
 int cpu_is_irq_pending(void);
 int cpu_is_nmi_pending(void);
 
+// CPU type selection — call before cpu_reset()
+// type: 0 = NMOS 6502 (default), 1 = CMOS 65C02
+void cpu_set_type(int is_65c02);
+
 // Status flag bits
 #define FLAG_CARRY     0x01
 #define FLAG_ZERO      0x02

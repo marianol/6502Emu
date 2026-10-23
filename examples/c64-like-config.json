@@ -1,29 +1,29 @@
 {
   "name": "C64-like System",
-  "description": "Configuration similar to Commodore 64",
+  "description": "Configuration similar to Commodore 64. Note: the real C64 uses bank switching to overlap RAM and ROM - this config uses a simplified layout without banking.",
   "cpu": {
     "type": "6502",
     "clockSpeed": 985248
   },
   "memory": {
-    "ramSize": 65536,
-    "ramStart": 0,
+    "ramSize": "0x9F00",
+    "ramStart": "0x0000",
     "romImages": [
       {
         "file": "basic.bin",
-        "loadAddress": 40960,
+        "loadAddress": "0xA000",
         "format": "binary",
         "description": "BASIC interpreter"
       },
       {
         "file": "kernal.bin",
-        "loadAddress": 57344,
+        "loadAddress": "0xE000",
         "format": "binary",
         "description": "Kernal ROM"
       },
       {
         "file": "chargen.bin",
-        "loadAddress": 53248,
+        "loadAddress": "0xC000",
         "format": "binary",
         "description": "Character generator ROM"
       }
@@ -31,66 +31,28 @@
   },
   "peripherals": {
     "acia": {
-      "baseAddress": 56832,
+      "baseAddress": "0x9F70",
+      "registerSize": 4,
       "baudRate": 1200,
       "description": "RS-232 interface"
     },
     "via": {
-      "baseAddress": 56576,
+      "baseAddress": "0x9F20",
+      "registerSize": 16,
       "enableTimers": true,
       "portAConnections": [
-        {
-          "pin": 0,
-          "device": "Joystick1",
-          "type": "input"
-        },
-        {
-          "pin": 1,
-          "device": "Joystick1",
-          "type": "input"
-        },
-        {
-          "pin": 2,
-          "device": "Joystick1",
-          "type": "input"
-        },
-        {
-          "pin": 3,
-          "device": "Joystick1",
-          "type": "input"
-        },
-        {
-          "pin": 4,
-          "device": "Joystick1_Fire",
-          "type": "input"
-        }
+        { "pin": 0, "device": "Joystick1",      "type": "input" },
+        { "pin": 1, "device": "Joystick1",      "type": "input" },
+        { "pin": 2, "device": "Joystick1",      "type": "input" },
+        { "pin": 3, "device": "Joystick1",      "type": "input" },
+        { "pin": 4, "device": "Joystick1_Fire", "type": "input" }
       ],
       "portBConnections": [
-        {
-          "pin": 0,
-          "device": "Joystick2",
-          "type": "input"
-        },
-        {
-          "pin": 1,
-          "device": "Joystick2",
-          "type": "input"
-        },
-        {
-          "pin": 2,
-          "device": "Joystick2",
-          "type": "input"
-        },
-        {
-          "pin": 3,
-          "device": "Joystick2",
-          "type": "input"
-        },
-        {
-          "pin": 4,
-          "device": "Joystick2_Fire",
-          "type": "input"
-        }
+        { "pin": 0, "device": "Joystick2",      "type": "input" },
+        { "pin": 1, "device": "Joystick2",      "type": "input" },
+        { "pin": 2, "device": "Joystick2",      "type": "input" },
+        { "pin": 3, "device": "Joystick2",      "type": "input" },
+        { "pin": 4, "device": "Joystick2_Fire", "type": "input" }
       ],
       "description": "Joystick and user port interface"
     }

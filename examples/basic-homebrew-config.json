@@ -6,12 +6,12 @@
     "clockSpeed": 1000000
   },
   "memory": {
-    "ramSize": 32768,
-    "ramStart": 0,
+    "ramSize": "0x7F00",
+    "ramStart": "0x0000",
     "romImages": [
       {
-        "file": "examples/monitor.bin",
-        "loadAddress": 57344,
+        "file": "monitor.bin",
+        "loadAddress": "0xE000",
         "format": "binary",
         "description": "System monitor ROM"
       }
@@ -19,36 +19,22 @@
   },
   "peripherals": {
     "acia": {
-      "baseAddress": 32768,
+      "baseAddress": "0x7F70",
+      "registerSize": 4,
       "baudRate": 9600,
       "description": "Serial communication interface"
     },
     "via": {
-      "baseAddress": 32784,
+      "baseAddress": "0x7F20",
+      "registerSize": 16,
       "enableTimers": true,
       "portAConnections": [
-        {
-          "pin": 0,
-          "device": "LED",
-          "type": "output"
-        },
-        {
-          "pin": 1,
-          "device": "LED",
-          "type": "output"
-        }
+        { "pin": 0, "device": "LED", "type": "output" },
+        { "pin": 1, "device": "LED", "type": "output" }
       ],
       "portBConnections": [
-        {
-          "pin": 0,
-          "device": "Button",
-          "type": "input"
-        },
-        {
-          "pin": 1,
-          "device": "Button",
-          "type": "input"
-        }
+        { "pin": 0, "device": "Button", "type": "input" },
+        { "pin": 1, "device": "Button", "type": "input" }
       ],
       "description": "Versatile interface adapter for I/O"
     }

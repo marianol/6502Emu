@@ -115,6 +115,16 @@ Napi::Value IsNMIPending(const Napi::CallbackInfo& info) {
     return Napi::Boolean::New(info.Env(), cpu_is_nmi_pending());
 }
 
+Napi::Value SetCPUType(const Napi::CallbackInfo& info) {
+    if (info.Length() < 1 || !info[0].IsNumber()) {
+        Napi::TypeError::New(info.Env(), "Expected number argument (0=6502, 1=65C02)").ThrowAsJavaScriptException();
+        return info.Env().Undefined();
+    }
+    int is_65c02 = info[0].As<Napi::Number>().Int32Value();
+    cpu_set_type(is_65c02);
+    return info.Env().Undefined();
+}
+
 // Module initialization
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("reset", Napi::Function::New(env, Reset));
@@ -127,6 +137,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("clearIRQ", Napi::Function::New(env, ClearIRQ));
     exports.Set("isIRQPending", Napi::Function::New(env, IsIRQPending));
     exports.Set("isNMIPending", Napi::Function::New(env, IsNMIPending));
+    exports.Set("setCPUType", Napi::Function::New(env, SetCPUType));
     
     return exports;
 }

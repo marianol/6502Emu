@@ -1,0 +1,209 @@
+# =============================================================================
+# 6502 Emulator — Full Reference Configuration
+# =============================================================================
+# This file documents every available option with explanations.
+# Copy and trim it to build your own system config.
+#
+# Both JSON and YAML formats are supported. JSON configs work identically —
+# just remember JSON has no comments and requires quoted strings.
+#
+# ADDRESS NOTATION
+#   Addresses and sizes can be written as hex strings ("0x8000") or plain
+#   decimal integers (32768). Hex is recommended — it matches datasheets
+#   and makes the memory map much easier to read.
+#
+# ROM FILE PATHS
+#   Relative paths are resolved relative to the config file's own directory.
+#   Keep your ROM images next to the config and just use the filename.
+# =============================================================================
+
+
+# ---------------------------------------------------------------------------
+# Human-readable metadata (optional, not used by the emulator)
+# ---------------------------------------------------------------------------
+name: My 6502 Homebrew Computer
+description: Full reference configuration showing all available options
+
+
+# ---------------------------------------------------------------------------
+# CPU
+# ---------------------------------------------------------------------------
+cpu:
+  # Processor variant. Options: "6502" or "65C02"
+  # 65C02 adds extra instructions (BRA, PHX, PHY, STZ, TRB, TSB, etc.)
+  type: "65C02"
+
+  # Target clock speed in Hz.
+  # Common values: 1000000 (1 MHz), 2000000 (2 MHz), 4000000 (4 MHz)
+  # The emulator simulates this speed as accurately as the host allows.
+  clockSpeed: 1000000
+
+
+# ---------------------------------------------------------------------------
+# Memory map
+# ---------------------------------------------------------------------------
+memory:
+  # Size of RAM in bytes.
+  # Keep this small enough that RAM ends before your I/O area starts.
+  # Example: 0x7F00 = 32512 bytes, leaves 0x7F00–0x7FFF free for I/O.
+  ramSize: "0x7F00"
+
+  # Start address of RAM. Almost always 0x0000 on a 6502 system.
+  # The 6502 zero page (0x0000–0x00FF) and stack (0x0100–0x01FF)
+  # must be in RAM, so ramStart should normally stay at 0x0000.
+  ramStart: "0x0000"
+
+  # List of ROM images to load at startup.
+  # You can load multiple images — useful for BASIC + monitor combos.
+  # Images are loaded in order; later images can overlay earlier ones.
+  romImages:
+
+    - # Path to the ROM binary. Relative to this config file's directory.
+      # Supports three formats: binary, ihex (Intel HEX), srec (Motorola S-record)
+      file: "firmware.bin"
+
+      # Address where the first byte of the file is placed in the 6502
+      # address space. For a 32KB ROM filling the upper half: 0x8000.
+      # The 6502 reset vector lives at 0xFFFC/0xFFFD and must be in ROM.
+      loadAddress: "0x8000"
+
+      # File format. Options: "binary", "ihex", "srec"
+      # binary — raw bytes, loaded exactly as-is starting at loadAddress
+      # ihex   — Intel HEX format; loadAddress is ignored (addresses come from the file)
+      # srec   — Motorola S-record format; same as ihex
+      format: "binary"
+
+      # Optional human-readable label (not used by the emulator)
+      description: "System firmware"
+
+
+# ---------------------------------------------------------------------------
+# Peripherals
+# ---------------------------------------------------------------------------
+peripherals:
+
+  # --------------------------------------------------------------------------
+  # ACIA — Motorola 68B50 Asynchronous Communications Interface Adapter
+  # Provides serial (RS-232) communication.
+  # Registers: offset 0 = Control (write) / Status (read)
+  #            offset 1 = Transmit (write) / Receive (read)
+  # --------------------------------------------------------------------------
+  acia:
+    # Base address of the ACIA in the 6502 address space.
+    # Must not overlap RAM or VIA.
+    baseAddress: "0x7F70"
+
+    # Number of bytes this peripheral occupies in the address space.
+    # The 68B50 has 2 internal registers, but your hardware's address
+    # decoding may map it across a larger range (partial decoding).
+    # Example: if your board decodes A1 but ignores A2, the ACIA responds
+    # to 0x7F70, 0x7F71, 0x7F72, 0x7F73 — set registerSize: 4.
+    # Default: 2. Set higher to cover mirrors and silence "unmapped" warnings.
+    registerSize: 4
+
+    # Baud rate for serial communication.
+    # Common values: 1200, 2400, 4800, 9600, 19200, 28800, 38400, 115200
+    # This should match your terminal emulator's baud rate setting.
+    baudRate: 9600
+
+    # Optional: serial port backend for the ACIA.
+    # Options:
+    #   "pty"          → Creates a pseudo-terminal pair. The emulator prints the
+    #                    slave device path on startup (e.g. /dev/ttys004).
+    #                    Connect your terminal program to that path:
+    #                      screen /dev/ttys004
+    #                      picocom -b 9600 /dev/ttys004
+    #                    Works on macOS, Linux, and Windows.
+    #   <device path>  → Reserved for future real serial port support.
+    #   (omitted)      → Transmitted bytes appear on stdout. Simple but you
+    #                    cannot send data back to the firmware.
+    # serialPort: "pty"
+
+    description: "Serial communication interface (68B50 ACIA)"
+
+  # --------------------------------------------------------------------------
+  # VIA — MOS 65C22 Versatile Interface Adapter
+  # Provides two 8-bit parallel I/O ports (A and B) plus two timers.
+  # Registers: 16 bytes starting at baseAddress (offsets 0x00–0x0F)
+  # --------------------------------------------------------------------------
+  via:
+    # Base address of the VIA. Must not overlap RAM or ACIA.
+    baseAddress: "0x7F20"
+
+    # Number of bytes this peripheral occupies in the address space.
+    # The 65C22 has 16 internal registers (offsets 0x00–0x0F).
+    # Default: 16. Increase if your hardware mirrors it across a larger range.
+    registerSize: 16
+
+    # Enable the VIA's two hardware timers (T1 and T2).
+    # T1 can generate periodic IRQs; T2 can count pulses or time one-shots.
+    enableTimers: true
+
+    # Port A connections — describes what physical devices are wired to
+    # each pin of VIA Port A (PA0–PA7). Informational only; the emulator
+    # uses this to label pins in the status display.
+    # type: "input", "output", or "bidirectional"
+    portAConnections:
+      - pin: 0
+        device: "LED_0"
+        type: output
+      - pin: 1
+        device: "LED_1"
+        type: output
+      - pin: 2
+        device: "LED_2"
+        type: output
+      - pin: 3
+        device: "LED_3"
+        type: output
+      - pin: 4
+        device: "LED_4"
+        type: output
+      - pin: 5
+        device: "LED_5"
+        type: output
+      - pin: 6
+        device: "LED_6"
+        type: output
+      - pin: 7
+        device: "LED_7"
+        type: output
+
+    # Port B connections — same format as portAConnections.
+    portBConnections:
+      - pin: 0
+        device: "Button_0"
+        type: input
+      - pin: 1
+        device: "Button_1"
+        type: input
+      - pin: 2
+        device: "Button_2"
+        type: input
+      - pin: 3
+        device: "Button_3"
+        type: input
+
+    description: "Parallel I/O and timers (65C22 VIA)"
+
+
+# ---------------------------------------------------------------------------
+# Debugging
+# ---------------------------------------------------------------------------
+debugging:
+  # Print every instruction to the console as it executes.
+  # Very verbose — use only for short traces or test programs.
+  # Significantly slows execution when enabled.
+  enableTracing: false
+
+  # Pause execution immediately after reset instead of running automatically.
+  # Useful when you want to inspect state or set breakpoints before the
+  # firmware starts. Use the "run" or "step" CLI commands to continue.
+  breakOnReset: false
+
+  # Path to a CC65 symbol file (.sym) generated with "ld65 -Ln".
+  # When loaded, the debugger can show symbol names instead of raw addresses.
+  # Relative to this config file's directory.
+  # Set to null to disable.
+  symbolFile: null
+  # symbolFile: "firmware.sym"

@@ -33,6 +33,7 @@ export interface ACIAConfig {
   baseAddress: number;
   baudRate: number;
   serialPort?: string;
+  registerSize?: number; // Number of bytes decoded to this peripheral (default 2, increase to cover mirrors)
 }
 
 export interface VIAConfig {
@@ -40,6 +41,7 @@ export interface VIAConfig {
   portAConnections?: PortConnection[];
   portBConnections?: PortConnection[];
   enableTimers: boolean;
+  registerSize?: number; // Number of bytes decoded to this peripheral (default 16)
 }
 
 export interface PortConnection {
@@ -384,17 +386,19 @@ export class SystemConfigLoader {
 
     // Add peripheral ranges
     if (config.peripherals.acia) {
+      const aciaSize = config.peripherals.acia.registerSize ?? 2;
       addressRanges.push({
         start: config.peripherals.acia.baseAddress,
-        end: config.peripherals.acia.baseAddress + 1,
+        end: config.peripherals.acia.baseAddress + aciaSize - 1,
         name: 'ACIA'
       });
     }
 
     if (config.peripherals.via) {
+      const viaSize = config.peripherals.via.registerSize ?? 16;
       addressRanges.push({
         start: config.peripherals.via.baseAddress,
-        end: config.peripherals.via.baseAddress + 15,
+        end: config.peripherals.via.baseAddress + viaSize - 1,
         name: 'VIA'
       });
     }

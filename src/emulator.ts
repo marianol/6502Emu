@@ -8,6 +8,7 @@ import { SystemConfig, SystemConfigLoader } from './config/system';
 import { MemoryInspectorImpl } from './debug/memory-inspector';
 import { DebugInspectorImpl } from './debug/inspector';
 import { ACIA68B50 } from './peripherals/acia';
+import { ConsoleSerialPort, PtySerialPort } from './peripherals/serial-port';
 import { VIA65C22Implementation } from './peripherals/via';
 import { CC65SymbolParser } from './cc65/symbol-parser';
 import { CC65MemoryConfigurator } from './cc65/memory-layout';
@@ -53,6 +54,12 @@ export class Emulator {
   private profiler: EmulatorProfiler;
   private optimizer: EmulatorOptimizer;
   private speedController: ExecutionSpeedController;
+
+  // Active serial port — kept so shutdown() can close it cleanly
+  private activeSerialPort: import('./peripherals/serial-port').SerialPort | null = null;
+
+  // Active ACIA — kept so CLI can attach debug callbacks
+  private activeAcia: import('./peripherals/acia').ACIA68B50 | null = null;
   
   // Execution control
   private executionTimer?: NodeJS.Timeout;
@@ -162,35 +169,51 @@ export class Emulator {
     // Configure ACIA if specified
     if (this.config.peripherals.acia) {
       const acia = new ACIA68B50();
+      acia.setCpuFrequency(this.config.cpu.clockSpeed);
       acia.setBaudRate(this.config.peripherals.acia.baudRate);
+      this.activeAcia = acia;
       
-      if (this.config.peripherals.acia.serialPort) {
-        // TODO: Connect to actual serial port when available
-        console.log(`ACIA configured for serial port: ${this.config.peripherals.acia.serialPort}`);
+      // Choose serial port backend:
+      //   serialPort: "pty"   → PTY pair; connect with screen/minicom/picocom
+      //   serialPort: <path>  → reserved for future real serial port support
+      //   (omitted)           → console stdout (useful for simple testing)
+      if (this.config.peripherals.acia.serialPort === 'pty') {
+        const ptyPort = new PtySerialPort(this.config.peripherals.acia.baudRate);
+        acia.connectSerial(ptyPort);
+        this.activeSerialPort = ptyPort;
+      } else {
+        const consolePort = new ConsoleSerialPort();
+        acia.connectSerial(consolePort);
+        this.activeSerialPort = consolePort;
+        if (this.config.peripherals.acia.serialPort) {
+          console.log(`Note: real serial port connection not yet implemented; using console output`);
+        }
       }
       
+      const aciaSize = this.config.peripherals.acia.registerSize ?? 2;
       peripheralHub.registerPeripheral(
         acia,
         this.config.peripherals.acia.baseAddress,
-        this.config.peripherals.acia.baseAddress + 1,
+        this.config.peripherals.acia.baseAddress + aciaSize - 1,
         'ACIA'
       );
       
-      console.log(`ACIA registered at $${this.config.peripherals.acia.baseAddress.toString(16).toUpperCase().padStart(4, '0')}-$${(this.config.peripherals.acia.baseAddress + 1).toString(16).toUpperCase().padStart(4, '0')}`);
+      console.log(`ACIA registered at $${this.config.peripherals.acia.baseAddress.toString(16).toUpperCase().padStart(4, '0')}-$${(this.config.peripherals.acia.baseAddress + aciaSize - 1).toString(16).toUpperCase().padStart(4, '0')}`);
     }
     
     // Configure VIA if specified
     if (this.config.peripherals.via) {
       const via = new VIA65C22Implementation();
       
+      const viaSize = this.config.peripherals.via.registerSize ?? 16;
       peripheralHub.registerPeripheral(
         via,
         this.config.peripherals.via.baseAddress,
-        this.config.peripherals.via.baseAddress + 15,
+        this.config.peripherals.via.baseAddress + viaSize - 1,
         'VIA'
       );
       
-      console.log(`VIA registered at $${this.config.peripherals.via.baseAddress.toString(16).toUpperCase().padStart(4, '0')}-$${(this.config.peripherals.via.baseAddress + 15).toString(16).toUpperCase().padStart(4, '0')}`);
+      console.log(`VIA registered at $${this.config.peripherals.via.baseAddress.toString(16).toUpperCase().padStart(4, '0')}-$${(this.config.peripherals.via.baseAddress + viaSize - 1).toString(16).toUpperCase().padStart(4, '0')}`);
     }
   }
 
@@ -509,6 +532,25 @@ export class Emulator {
   }
 
   /**
+   * Get the active ACIA peripheral (if configured)
+   */
+  getAcia(): import('./peripherals/acia').ACIA68B50 | null {
+    return this.activeAcia;
+  }
+
+  /**
+   * Shut down the emulator and release all resources (serial ports, timers).
+   * Call before process.exit() to avoid hangs.
+   */
+  shutdown(): void {
+    this.stop();
+    if (this.activeSerialPort) {
+      this.activeSerialPort.close();
+      this.activeSerialPort = null;
+    }
+  }
+
+  /**
    * Get performance statistics
    */
   getPerformanceStats(): any {
@@ -530,10 +572,18 @@ export class Emulator {
   }
 
   /**
-   * Load configuration from file and reinitialize
+   * Load configuration from file and reinitialize.
+   * ROM file paths that are relative are resolved against the config file's
+   * own directory, so configs and their ROM images can live together.
    */
   async loadConfigFromFile(configPath: string): Promise<void> {
     const config = SystemConfigLoader.loadFromFile(configPath);
+    const configDir = path.dirname(path.resolve(configPath));
+    for (const rom of config.memory.romImages) {
+      if (!path.isAbsolute(rom.file)) {
+        rom.file = path.resolve(configDir, rom.file);
+      }
+    }
     await this.loadConfig(config);
   }
 }

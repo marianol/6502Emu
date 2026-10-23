@@ -71,6 +71,10 @@ export class ACIA68B50 implements Peripheral {
   
   private serialPort: SerialPort | null = null;
   private baudRate: number = 9600;
+  private cpuFrequency: number = 1000000; // Hz — update via setCpuFrequency()
+
+  // Optional debug callback — called with each transmitted byte
+  private txDebugCallback: ((byte: number) => void) | null = null;
   
   // Timing simulation
   private cyclesPerBit: number = 0;
@@ -270,6 +274,27 @@ export class ACIA68B50 implements Peripheral {
   }
 
   /**
+   * Set the CPU clock frequency used for baud rate timing calculations.
+   * Must be called before setBaudRate to take effect.
+  /**
+   * Set a callback that receives every transmitted byte — useful for
+   * debugging serial output without a terminal program.
+   */
+  setTxDebugCallback(cb: ((byte: number) => void) | null): void {
+    this.txDebugCallback = cb;
+  }
+
+  /**
+   * Set the CPU clock frequency used for baud rate timing calculations.
+   * Must be called before setBaudRate to take effect.
+   * @param hz CPU clock speed in Hz
+   */
+  setCpuFrequency(hz: number): void {
+    this.cpuFrequency = hz;
+    this.updateBaudRateTiming();
+  }
+
+  /**
    * Set the baud rate for serial communication
    * @param rate Baud rate in bits per second
    */
@@ -332,8 +357,8 @@ export class ACIA68B50 implements Peripheral {
         break;
     }
 
-    // Assume 1MHz CPU clock for timing calculations
-    const cpuFrequency = 1000000;
+    // Use configured CPU clock frequency for timing calculations
+    const cpuFrequency = this.cpuFrequency;
     this.cyclesPerBit = Math.floor(cpuFrequency / effectiveBaudRate);
   }
 
@@ -343,6 +368,10 @@ export class ACIA68B50 implements Peripheral {
   private completeTransmission(): void {
     if (this.serialPort) {
       this.serialPort.write(this.transmitDataRegister);
+    }
+
+    if (this.txDebugCallback) {
+      this.txDebugCallback(this.transmitDataRegister);
     }
     
     this.statusRegister |= ACIAStatusBits.TDRE;

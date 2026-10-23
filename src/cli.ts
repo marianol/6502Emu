@@ -266,6 +266,13 @@ export class EmulatorCLI {
     });
 
     this.addCommand({
+      name: 'serialdebug',
+      description: 'Toggle hex dump of ACIA TX bytes to console (for debugging serial output)',
+      usage: 'serialdebug',
+      handler: this.handleSerialDebug.bind(this)
+    });
+
+    this.addCommand({
       name: 'help',
       description: 'Show available commands',
       usage: 'help [command]',
@@ -922,12 +929,44 @@ export class EmulatorCLI {
 
   private handleRegions(): void {
     const memory = this.emulator.getSystemBus().getMemory();
+    const peripherals = this.emulator.getSystemBus().getPeripheralHub().getPeripherals();
     const regions = memory.getMemoryMap();
-    
-    console.log(`Memory Regions (${regions.length} total):`);
-    regions.forEach((region, index) => {
-      console.log(`  ${index}: ${region.type}: ${region.start.toString(16).toUpperCase().padStart(4, '0')}-${region.end.toString(16).toUpperCase().padStart(4, '0')}`);
+
+    // Combine memory regions and peripherals into one sorted list
+    type Region = { start: number; end: number; type: string; label: string };
+    const all: Region[] = [];
+
+    regions.forEach(region => {
+      all.push({
+        start: region.start,
+        end: region.end,
+        type: region.type,
+        label: region.type
+      });
     });
+
+    peripherals.forEach(p => {
+      const size = p.endAddress - p.startAddress + 1;
+      all.push({
+        start: p.startAddress,
+        end: p.endAddress,
+        type: 'I/O',
+        label: `${p.name} (${size} byte${size !== 1 ? 's' : ''})`
+      });
+    });
+
+    all.sort((a, b) => a.start - b.start);
+
+    console.log(`\nMemory Map (${all.length} regions):`);
+    console.log(`  ${'Start'.padEnd(6)} ${'End'.padEnd(6)} ${'Size'.padEnd(7)} Type`);
+    console.log(`  ${'------'} ${'------'} ${'-------'} ----`);
+    all.forEach(r => {
+      const start = `$${r.start.toString(16).toUpperCase().padStart(4, '0')}`;
+      const end   = `$${r.end.toString(16).toUpperCase().padStart(4, '0')}`;
+      const size  = (r.end - r.start + 1).toString().padEnd(7);
+      console.log(`  ${start.padEnd(6)} ${end.padEnd(6)} ${size} ${r.label}`);
+    });
+    console.log('');
   }
 
 
@@ -940,11 +979,48 @@ export class EmulatorCLI {
     console.log(`License: ${packageJson.license}`);
   }
 
+  private serialDebugEnabled: boolean = false;
+
+  private handleSerialDebug(): void {
+    const acia = this.emulator.getAcia();
+    if (!acia) {
+      console.log('No ACIA configured.');
+      return;
+    }
+
+    this.serialDebugEnabled = !this.serialDebugEnabled;
+
+    if (this.serialDebugEnabled) {
+      let lineHex = '';
+      let lineAscii = '';
+      let col = 0;
+
+      acia.setTxDebugCallback((byte: number) => {
+        const h = byte.toString(16).toUpperCase().padStart(2, '0');
+        const c = (byte >= 0x20 && byte < 0x7F) ? String.fromCharCode(byte) : '.';
+        lineHex   += h + ' ';
+        lineAscii += c;
+        col++;
+        if (col === 16 || byte === 0x0A) {
+          process.stdout.write(`[SERIAL TX] ${lineHex.padEnd(48)} |${lineAscii}|\n`);
+          lineHex = ''; lineAscii = ''; col = 0;
+        }
+      });
+      console.log('Serial debug ON — ACIA TX bytes will be shown as hex dump.');
+    } else {
+      acia.setTxDebugCallback(null);
+      console.log('Serial debug OFF.');
+    }
+  }
+
   private handleQuit(): void {
     console.log('Goodbye!');
     this.emulator.stop();
+    this.emulator.shutdown();
     this.running = false;
     this.rl.close();
+    // Force exit to ensure PTY and any other async resources are released
+    process.exit(0);
   }
 }
 
