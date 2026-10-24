@@ -94,7 +94,10 @@ export class ACIA68B50 implements Peripheral {
    * @returns Register value
    */
   read(offset: number): number {
-    switch (offset) {
+    // The 68B50 has only 2 registers, selected by A0. When the chip is mapped
+    // across a wider window (registerSize > 2), higher address lines are not
+    // decoded, so the registers mirror. Mask to the low bit to emulate that.
+    switch (offset & 0x01) {
       case 0: // Status Register
         return this.getStatusRegister();
       
@@ -108,11 +111,12 @@ export class ACIA68B50 implements Peripheral {
 
   /**
    * Write to ACIA register
-   * @param offset Register offset (0 = Control, 1 = Data)
+   * @param offset Register offset (even = Control, odd = Data; mirrored)
    * @param value Value to write
    */
   write(offset: number, value: number): void {
-    switch (offset) {
+    // Mirror across the decoded window — see read() comment.
+    switch (offset & 0x01) {
       case 0: // Control Register
         this.setControlRegister(value);
         break;

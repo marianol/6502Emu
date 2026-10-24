@@ -5,6 +5,17 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5] - 2026-10-23
+
+### Fixed
+- **ACIA register mirroring.** With `registerSize` > 2, the 68B50 ACIA only
+  responded at offsets 0 and 1 and silently ignored writes to higher offsets.
+  Firmware relying on partial address decoding (e.g. writing the control
+  register at `$7F72` when the base is `$7F70`) had its ACIA config dropped,
+  producing no serial output. The register select now masks with `& 0x01` so
+  the two real registers mirror across the whole decoded window, matching how
+  a 68B50 behaves on hardware that doesn't decode A1.
+
 ## [1.3.4] - 2026-10-23
 
 ### Fixed
