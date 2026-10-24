@@ -318,6 +318,11 @@ export class PtySerialPort implements SerialPort {
   private socatProcess: import('child_process').ChildProcess | null = null;
   private readBuffer: Buffer = Buffer.alloc(256);
 
+  // Process-wide tracking so a single exit handler can kill every socat
+  // child on any termination path, preventing orphaned PTY bridges.
+  private static activeSocats: Set<import('child_process').ChildProcess> = new Set();
+  private static exitHandlerRegistered = false;
+
   constructor(baudRate: number = 9600) {
     this.baudRate = baudRate;
     this.open();
@@ -338,12 +343,31 @@ export class PtySerialPort implements SerialPort {
       // Spawn socat ONCE as a long-lived background bridge. It creates two
       // linked raw PTYs and symlinks them to known paths. We do not capture
       // its stderr paths — we use the stable symlinks instead.
+      // NOT detached: socat stays a child of this process so it is cleaned up
+      // together with us. A process-level backstop (below) also kills it on
+      // any exit path, so it never orphans and leaks PTYs.
       this.socatProcess = spawn('socat', [
         'pty,raw,echo=0,link=' + masterLink,
         'pty,raw,echo=0,link=' + slaveLink
       ], {
         stdio: 'ignore'
       });
+
+      // Backstop: ensure socat is killed when the Node process exits by any
+      // path (normal exit, SIGTERM, uncaught error). Registered once per PTY.
+      if (!PtySerialPort.exitHandlerRegistered) {
+        PtySerialPort.exitHandlerRegistered = true;
+        const killAll = () => {
+          for (const proc of PtySerialPort.activeSocats) {
+            try { proc.kill('SIGKILL'); } catch { /* ignore */ }
+          }
+          PtySerialPort.activeSocats.clear();
+        };
+        process.on('exit', killAll);
+      }
+      if (this.socatProcess) {
+        PtySerialPort.activeSocats.add(this.socatProcess);
+      }
 
       // Wait (briefly, without busy-spinning) for socat to create the symlinks.
       const deadline = Date.now() + 2000;
@@ -458,6 +482,7 @@ export class PtySerialPort implements SerialPort {
     }
     // Kill the socat bridge process. SIGKILL to be certain it exits.
     if (this.socatProcess) {
+      PtySerialPort.activeSocats.delete(this.socatProcess);
       try { this.socatProcess.kill('SIGKILL'); } catch { /* ignore */ }
       this.socatProcess = null;
     }

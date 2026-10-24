@@ -59,5 +59,9 @@
     "enableTracing": false,
     "breakOnReset": false,
     "symbolFile": null
+  },
+  "webDashboard": {
+    "enabled": true,
+    "port": 6502
   }
 }

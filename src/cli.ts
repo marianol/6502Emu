@@ -1105,7 +1105,9 @@ export class EmulatorCLI {
         console.log(`Web dashboard already running at http://127.0.0.1:${this.dashboard.getPort()}`);
         return;
       }
-      this.dashboard = new DashboardServer(this.emulator, 6502);
+      const cfg = this.emulator.getConfig().webDashboard;
+      const port = (cfg && cfg.port) || 6502;
+      this.dashboard = new DashboardServer(this.emulator, port);
       try {
         const url = await this.dashboard.start();
         console.log(`Web dashboard started: ${url}`);
