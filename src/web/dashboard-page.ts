@@ -88,6 +88,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .memdump .addr { color: var(--accent); }
   .memdump .ascii { color: var(--muted); }
   .memdump .pc { background: var(--out); color: #2b1d00; border-radius: 2px; }
+  .io-type { color: var(--out); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -308,13 +309,25 @@ async function poll() {
     document.getElementById('actclock').textContent = (s.stats.clockSpeed/1e6).toFixed(3) + ' MHz';
     document.getElementById('runtime').textContent = (s.stats.executionTimeMs/1000).toFixed(1) + ' s';
 
-    // Memory map
+    // Memory map — combine RAM/ROM regions with peripheral (I/O) regions,
+    // sorted by start address, matching the CLI 'regions' command.
     const tb = document.querySelector('#memmap tbody');
     tb.innerHTML = '';
+    const regions = [];
     for (const m of s.memoryMap) {
+      regions.push({ start: m.start, end: m.end, size: m.size, type: m.type, label: m.type });
+    }
+    for (const p of (s.peripherals || [])) {
+      regions.push({ start: p.start, end: p.end, size: p.size, type: 'I/O', label: p.name });
+    }
+    regions.sort((a, b) => a.start - b.start);
+    for (const r of regions) {
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + hex(m.start,4) + '</td><td>' + hex(m.end,4) +
-        '</td><td>' + m.size + '</td><td>' + m.type + '</td>';
+      const typeCell = r.type === 'I/O'
+        ? '<span class="io-type">' + r.label + '</span>'
+        : r.label;
+      tr.innerHTML = '<td>' + hex(r.start,4) + '</td><td>' + hex(r.end,4) +
+        '</td><td>' + r.size + '</td><td>' + typeCell + '</td>';
       tb.appendChild(tr);
     }
 
