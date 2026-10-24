@@ -233,6 +233,26 @@ export class MemoryManager {
     return 0xFF;
   }
 
+  /**
+   * Side-effect-free, non-warning read of a mapped memory region, for
+   * inspection tools. Returns 0xFF for unmapped addresses without logging.
+   * Note: this covers RAM/ROM regions only — peripheral (I/O) addresses are
+   * handled separately via the peripheral hub's peek().
+   */
+  peek(address: number): number {
+    const region = this.findRegion(address);
+    if (region && region.type !== 'IO') {
+      return region.handler.read(address);
+    }
+    return 0xFF;
+  }
+
+  /** Whether an address falls within a mapped RAM/ROM region. */
+  isMapped(address: number): boolean {
+    const region = this.findRegion(address);
+    return region !== null && region.type !== 'IO';
+  }
+
   // Write to memory
   write(address: number, value: number): void {
     const region = this.findRegion(address);

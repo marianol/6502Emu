@@ -60,6 +60,9 @@ export class Emulator {
 
   // Active ACIA — kept so CLI can attach debug callbacks
   private activeAcia: import('./peripherals/acia').ACIA68B50 | null = null;
+
+  // Active VIA — kept so tooling (e.g. web dashboard) can inspect port state
+  private activeVia: import('./peripherals/via').VIA65C22Implementation | null = null;
   
   // Execution control
   private executionTimer?: NodeJS.Timeout;
@@ -160,7 +163,9 @@ export class Emulator {
   private async configurePeripherals(): Promise<void> {
     const peripheralHub = this.systemBus.getPeripheralHub();
     
-    // Clear existing peripherals
+    // Clear existing peripherals and cached references
+    this.activeAcia = null;
+    this.activeVia = null;
     const existingPeripherals = peripheralHub.getPeripherals();
     for (const peripheral of existingPeripherals) {
       peripheralHub.unregisterPeripheral(peripheral.name);
@@ -204,6 +209,7 @@ export class Emulator {
     // Configure VIA if specified
     if (this.config.peripherals.via) {
       const via = new VIA65C22Implementation();
+      this.activeVia = via;
       
       const viaSize = this.config.peripherals.via.registerSize ?? 16;
       peripheralHub.registerPeripheral(
@@ -542,6 +548,13 @@ export class Emulator {
    */
   getAcia(): import('./peripherals/acia').ACIA68B50 | null {
     return this.activeAcia;
+  }
+
+  /**
+   * Get the active VIA peripheral (if configured)
+   */
+  getVia(): import('./peripherals/via').VIA65C22Implementation | null {
+    return this.activeVia;
   }
 
   /**

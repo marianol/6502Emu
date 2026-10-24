@@ -10,6 +10,7 @@ import path from 'path';
 import readline from 'readline';
 import { Emulator, EmulatorState } from './emulator';
 import { SystemConfigLoader } from './config/system';
+import { DashboardServer } from './web/dashboard-server';
 
 /**
  * CLI command interface
@@ -34,6 +35,7 @@ export class EmulatorCLI {
   private lastDisasmAddress: number = 0;
   private lastDisasmLength: number = 32;
   private lastCommand: string = '';
+  private dashboard: DashboardServer | null = null;
 
   constructor() {
     this.emulator = new Emulator();
@@ -82,6 +84,9 @@ export class EmulatorCLI {
         }
       }
     }
+
+    // Start the web dashboard if enabled in config (default on, port 6502)
+    await this.startDashboard();
 
     // Startup complete — now accept input
     this.rl.resume();
@@ -294,6 +299,13 @@ export class EmulatorCLI {
     });
 
     this.addCommand({
+      name: 'web',
+      description: 'Show the web dashboard URL, or start/stop it',
+      usage: 'web [start|stop]',
+      handler: this.handleWeb.bind(this)
+    });
+
+    this.addCommand({
       name: 'help',
       description: 'Show available commands',
       usage: 'help [command]',
@@ -340,6 +352,18 @@ export class EmulatorCLI {
       console.log('\nUse "quit" to exit');
       this.rl.prompt();
     });
+
+    // Backstop cleanup so the dashboard port and serial resources are always
+    // released, even on an unexpected termination (SIGTERM) or process exit.
+    const cleanup = () => {
+      if (this.dashboard) {
+        this.dashboard.stop();
+        this.dashboard = null;
+      }
+      this.emulator.shutdown();
+    };
+    process.on('exit', cleanup);
+    process.on('SIGTERM', () => { cleanup(); process.exit(0); });
   }
 
   /**
@@ -1042,8 +1066,72 @@ export class EmulatorCLI {
     }
   }
 
+  /**
+   * Start the web dashboard if the config enables it (on by default).
+   */
+  private async startDashboard(): Promise<void> {
+    const cfg = this.emulator.getConfig().webDashboard;
+    // Default: enabled, port 6502. A config can disable it with enabled:false.
+    const enabled = cfg ? cfg.enabled !== false : true;
+    if (!enabled) return;
+
+    const port = (cfg && cfg.port) || 6502;
+    this.dashboard = new DashboardServer(this.emulator, port);
+    try {
+      const url = await this.dashboard.start();
+      console.log(`Web dashboard: ${url}`);
+    } catch (err) {
+      console.warn(`Web dashboard could not start: ${err instanceof Error ? err.message : String(err)}`);
+      this.dashboard = null;
+    }
+  }
+
+  private async handleWeb(args: string[]): Promise<void> {
+    const sub = (args[0] || '').toLowerCase();
+
+    if (sub === 'stop') {
+      if (this.dashboard && this.dashboard.isRunning()) {
+        this.dashboard.stop();
+        this.dashboard = null;
+        console.log('Web dashboard stopped.');
+      } else {
+        console.log('Web dashboard is not running.');
+      }
+      return;
+    }
+
+    if (sub === 'start') {
+      if (this.dashboard && this.dashboard.isRunning()) {
+        console.log(`Web dashboard already running at http://127.0.0.1:${this.dashboard.getPort()}`);
+        return;
+      }
+      const cfg = this.emulator.getConfig().webDashboard;
+      const port = (cfg && cfg.port) || 6502;
+      this.dashboard = new DashboardServer(this.emulator, port);
+      try {
+        const url = await this.dashboard.start();
+        console.log(`Web dashboard started: ${url}`);
+      } catch (err) {
+        console.warn(`Could not start web dashboard: ${err instanceof Error ? err.message : String(err)}`);
+        this.dashboard = null;
+      }
+      return;
+    }
+
+    // No arg: report status
+    if (this.dashboard && this.dashboard.isRunning()) {
+      console.log(`Web dashboard running at http://127.0.0.1:${this.dashboard.getPort()}`);
+    } else {
+      console.log('Web dashboard is not running. Use "web start" to start it.');
+    }
+  }
+
   private handleQuit(): void {
     console.log('Goodbye!');
+    if (this.dashboard) {
+      this.dashboard.stop();
+      this.dashboard = null;
+    }
     this.emulator.shutdown();  // stops execution and releases serial/PTY resources
     this.running = false;
     this.rl.close();

@@ -1,4 +1,4 @@
-# 6502/65C02 Homebrew Computer Emulator v1.5
+# 6502/65C02 Homebrew Computer Emulator v1.6
 
 A 6502/65C02 emulator designed for homebrew computer development, featuring instruction-level cycle counting, comprehensive debugging tools, peripheral simulation, a live serial terminal, and CC65 toolchain compatibility.
 
@@ -38,6 +38,14 @@ A 6502/65C02 emulator designed for homebrew computer development, featuring inst
 - **Bidirectional I/O** - type into the terminal, see firmware output live
 - **Transmit FIFO** - handles firmware that uses blind delay loops (e.g. WozMon) without dropping characters
 - **`serialdebug` command** - live hex dump of ACIA transmit bytes for debugging
+
+### Web Dashboard
+- **Live localhost dashboard** - open a browser page showing system status in real time
+- **CPU registers and flags**, execution stats, and the full memory map (RAM, ROM, VIA, ACIA)
+- **Visual VIA port view** - per-pin LEDs showing direction, value, and configured device labels
+- **ACIA state** with decoded status bits
+- **Memory hex viewer** with address input, Jump-to-PC, live refresh, and PC highlighting
+- **Zero dependencies** - uses Node's built-in HTTP server, bound to localhost, read-only
 
 ### Debugging & Development
 - **Interactive CLI** with comprehensive command set
@@ -149,6 +157,31 @@ screen /dev/ttysNNN 28800
 Everything your firmware transmits appears there, and anything you type is sent
 back to the firmware's ACIA receive register.
 
+### Web Dashboard
+
+On startup the emulator also prints a dashboard URL:
+
+```
+Web dashboard: http://127.0.0.1:6502
+```
+
+Open it in a browser for a live view of the system: CPU registers and flags,
+execution stats, the memory map (including VIA/ACIA), a visual VIA port view,
+ACIA status, and a memory hex viewer with a Jump-to-PC button and live refresh.
+The page polls twice a second and is read-only (it never changes emulator state).
+
+Control it from the CLI with the `web` command (`web`, `web start`, `web stop`).
+Configure or disable it per system in your config:
+
+```json
+"webDashboard": {
+  "enabled": true,
+  "port": 6502
+}
+```
+
+Set `"enabled": false` to turn it off, or change `port` if 6502 is in use.
+
 ### Launcher Script Features
 
 The `bin/6502-emulator` script provides:
@@ -165,7 +198,7 @@ The `bin/6502-emulator` script provides:
 
 ```bash
 $ bin/6502-emulator
-6502/65C02 Homebrew Computer Emulator v1.5.0
+6502/65C02 Homebrew Computer Emulator v1.6.0
 Type "help" for available commands, "quit" to exit
 
 No config specified, loading default: bin/config/simple6502-config.json
@@ -278,6 +311,7 @@ The project includes several pre-configured system examples:
 - `break <address>` - Set breakpoint
 - `unbreak <address>` - Remove breakpoint
 - `serialdebug` - Toggle a live hex dump of ACIA transmit bytes
+- `web [start|stop]` - Show the web dashboard URL, or start/stop it
 
 ### Utility
 - `speed <hz>` - Set clock speed
@@ -393,4 +427,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**6502/65C02 Homebrew Computer Emulator v1.5** - Bringing vintage computing to modern development workflows with a full 65C02 instruction set and a live serial terminal.
+**6502/65C02 Homebrew Computer Emulator v1.6** - Bringing vintage computing to modern development workflows with a full 65C02 instruction set and a live serial terminal.

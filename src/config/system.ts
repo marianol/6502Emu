@@ -8,6 +8,12 @@ export interface SystemConfig {
   peripherals: PeripheralConfig;
   cpu: CPUConfig;
   debugging: DebuggingConfig;
+  webDashboard?: WebDashboardConfig;
+}
+
+export interface WebDashboardConfig {
+  enabled: boolean;
+  port?: number; // default 6502
 }
 
 export interface MemoryConfig {
@@ -293,7 +299,8 @@ export class SystemConfigLoader {
         gpio: userConfig.peripherals?.gpio || defaultConfig.peripherals.gpio
       },
       cpu: { ...defaultConfig.cpu, ...userConfig.cpu },
-      debugging: { ...defaultConfig.debugging, ...userConfig.debugging }
+      debugging: { ...defaultConfig.debugging, ...userConfig.debugging },
+      webDashboard: userConfig.webDashboard
     };
   }
 

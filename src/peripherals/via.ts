@@ -335,4 +335,75 @@ export class VIA65C22Implementation implements VIA65C22 {
   getShiftRegister(): number {
     return this.shiftRegister;
   }
+
+  // ── Read-only inspection getters (no side effects) ──
+  // These let tooling (e.g. the web dashboard) read state without the
+  // clear-on-read side effects that read(offset) has for some registers.
+
+  /** Port A data direction register (1 = output, 0 = input per bit) */
+  getPortADirection(): number {
+    return this.portADirection;
+  }
+
+  /** Port B data direction register (1 = output, 0 = input per bit) */
+  getPortBDirection(): number {
+    return this.portBDirection;
+  }
+
+  /** Current Port A data latch */
+  getPortAData(): number {
+    return this.portAData;
+  }
+
+  /** Current Port B data latch */
+  getPortBData(): number {
+    return this.portBData;
+  }
+
+  /** Auxiliary Control Register */
+  getAuxiliaryControlRegister(): number {
+    return this.auxiliaryControlRegister;
+  }
+
+  /** Peripheral Control Register */
+  getPeripheralControlRegister(): number {
+    return this.peripheralControlRegister;
+  }
+
+  /** Interrupt Enable Register */
+  getInterruptEnableRegister(): number {
+    return this.interruptEnableRegister;
+  }
+
+  /** Whether each timer is currently running */
+  getTimerState(): { timer1Running: boolean; timer2Running: boolean } {
+    return { timer1Running: this.timer1Running, timer2Running: this.timer2Running };
+  }
+
+  /**
+   * Side-effect-free register read for inspection tools. Unlike read(), this
+   * does NOT clear timer interrupt flags (T1C_L/T2C_L) or inject IFR bit 7.
+   */
+  peek(offset: number): number {
+    switch (offset) {
+      case VIA65C22Implementation.REG_ORB_IRB: return this.portBData;
+      case VIA65C22Implementation.REG_ORA_IRA:
+      case VIA65C22Implementation.REG_ORA_IRA_NH: return this.portAData;
+      case VIA65C22Implementation.REG_DDRB: return this.portBDirection;
+      case VIA65C22Implementation.REG_DDRA: return this.portADirection;
+      case VIA65C22Implementation.REG_T1C_L: return this.timer1Counter & 0xFF;      // no flag clear
+      case VIA65C22Implementation.REG_T1C_H: return (this.timer1Counter >> 8) & 0xFF;
+      case VIA65C22Implementation.REG_T1L_L: return this.timer1Latch & 0xFF;
+      case VIA65C22Implementation.REG_T1L_H: return (this.timer1Latch >> 8) & 0xFF;
+      case VIA65C22Implementation.REG_T2C_L: return this.timer2Counter & 0xFF;      // no flag clear
+      case VIA65C22Implementation.REG_T2C_H: return (this.timer2Counter >> 8) & 0xFF;
+      case VIA65C22Implementation.REG_SR: return this.shiftRegister;
+      case VIA65C22Implementation.REG_ACR: return this.auxiliaryControlRegister;
+      case VIA65C22Implementation.REG_PCR: return this.peripheralControlRegister;
+      case VIA65C22Implementation.REG_IFR:
+        return this.interruptFlagRegister | (this.getInterruptStatus() ? 0x80 : 0x00);
+      case VIA65C22Implementation.REG_IER: return this.interruptEnableRegister | 0x80;
+      default: return 0xFF;
+    }
+  }
 }
