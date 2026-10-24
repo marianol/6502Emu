@@ -1,4 +1,4 @@
-# 6502 Emulator User Guide v1.4
+# 6502 Emulator User Guide v1.6
 
 ## Table of Contents
 
@@ -9,14 +9,15 @@
 5. [Loading Programs](#loading-programs)
 6. [Using Peripherals](#using-peripherals)
 7. [Serial Terminal](#serial-terminal)
-8. [Debugging Features](#debugging-features)
-9. [Performance Optimization](#performance-optimization)
-10. [CC65 Integration](#cc65-integration)
-11. [Troubleshooting](#troubleshooting)
+8. [Web Dashboard](#web-dashboard)
+9. [Debugging Features](#debugging-features)
+10. [Performance Optimization](#performance-optimization)
+11. [CC65 Integration](#cc65-integration)
+12. [Troubleshooting](#troubleshooting)
 
 ## Introduction
 
-The 6502 Emulator v1.4 is an instruction-level emulator designed for homebrew computer development. It tracks accurate total cycle counts per instruction (though not sub-instruction bus timing). It provides:
+The 6502 Emulator v1.6 is an instruction-level emulator designed for homebrew computer development. It tracks accurate total cycle counts per instruction (though not sub-instruction bus timing). It provides:
 
 - **Complete 6502/65C02 CPU emulation** using the improved MyLittle6502 core
 - **Full 65C02 CMOS instruction set** - activated via `cpu.type: "65C02"`
@@ -672,6 +673,61 @@ Some firmware (such as WozMon) sends a byte and then runs a fixed delay loop
 instead of polling the transmit-ready (TDRE) status bit. The emulator accepts
 bytes written during the transmit window into a small FIFO so none are dropped,
 matching the double-buffered behaviour of a real 68B50.
+
+## Web Dashboard
+
+The emulator serves a small localhost web page showing live system state. It is
+enabled by default; on startup you'll see:
+
+```
+Web dashboard: http://127.0.0.1:6502
+```
+
+Open that URL in a browser. The page polls the emulator a couple of times a
+second and displays:
+
+- **CPU registers** (A, X, Y, PC, SP, P) with decoded status flags (NV-BDIZC)
+- **Execution stats** — total cycles, instructions, average IPS, actual clock, run time
+- **Memory map** — RAM, ROM, and peripheral (VIA/ACIA) regions with address ranges
+- **ACIA state** — baud rate, control/status registers, decoded status bits
+- **VIA port view** — a visual representation of Port A and Port B: each pin is an
+  LED showing its direction (IN/OUT), current value, and the device label from the
+  config (e.g. LED, Button). Output pins driving high show amber, input pins reading
+  high show green.
+- **Memory hex viewer** — enter an address (hex) and view a hex + ASCII dump. The
+  "Jump to PC" button navigates to the current program counter, which is highlighted
+  in the dump. Tick "live" to refresh it on every poll. Peripheral registers are read
+  side-effect-free, so inspecting them never consumes ACIA data or clears VIA flags.
+
+The dashboard is read-only — it never changes emulator state — and binds to
+127.0.0.1 only.
+
+### Controlling the dashboard
+
+Use the `web` CLI command:
+
+```
+6502> web          # show the dashboard URL / status
+6502> web stop      # stop the server
+6502> web start     # start it again
+```
+
+### Configuration
+
+Add a `webDashboard` section to your config:
+
+```json
+"webDashboard": {
+  "enabled": true,
+  "port": 6502
+}
+```
+
+- `enabled` — set to `false` to disable the dashboard entirely.
+- `port` — change if something else is already using 6502.
+
+If omitted, the dashboard defaults to enabled on port 6502. Requires no extra
+software — it uses Node's built-in HTTP server.
 
 ## Debugging Features
 

@@ -5,6 +5,29 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-10-24
+
+### Added
+- **Web dashboard** — a localhost web page (enabled by default on port 6502)
+  showing live system state: CPU registers and flags, execution stats, the full
+  memory map (RAM/ROM/VIA/ACIA), ACIA status with decoded bits, a visual VIA port
+  view (per-pin LEDs with direction, value, and config device labels), and a
+  memory hex viewer with address input, Jump-to-PC, live refresh, and PC
+  highlighting. Zero dependencies (Node's built-in HTTP server), read-only, bound
+  to 127.0.0.1. Configurable via `webDashboard { enabled, port }`.
+- New `web` CLI command (`web`, `web start`, `web stop`).
+- Read-only `peek()` inspection path on peripherals / memory so the dashboard
+  memory viewer reads ACIA/VIA registers without side effects (never consumes
+  ACIA RX data or clears VIA timer flags) and without "unmapped memory" warnings.
+- `getVia()` on the Emulator; read-only getters on VIA and ACIA.
+
+### Fixed
+- socat PTY bridge is now reliably cleaned up on every exit path (clean quit,
+  SIGTERM, process exit) via a backstop handler — fixes orphaned socat processes
+  and the steadily growing `/dev/ttys` numbers from interrupted runs.
+- Dashboard server frees its port immediately on stop by destroying open sockets
+  (a polling browser no longer holds the port).
+
 ## [1.5.0] - 2026-10-23
 
 ### Added

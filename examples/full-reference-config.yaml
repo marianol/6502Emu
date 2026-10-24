@@ -207,3 +207,17 @@ debugging:
   # Set to null to disable.
   symbolFile: null
   # symbolFile: "firmware.sym"
+
+
+# ---------------------------------------------------------------------------
+# Web dashboard (optional)
+# ---------------------------------------------------------------------------
+# A small localhost web page showing live system state: CPU registers, run
+# stats, the memory map, ACIA state, a visual VIA port view, and a memory hex
+# viewer. Read-only; uses Node's built-in HTTP server (no extra software).
+# If this whole section is omitted, the dashboard defaults to enabled on 6502.
+webDashboard:
+  # Set to false to disable the dashboard entirely.
+  enabled: true
+  # Port to serve on (bound to 127.0.0.1 only). Change if 6502 is in use.
+  port: 6502
