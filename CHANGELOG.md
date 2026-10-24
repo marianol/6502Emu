@@ -5,6 +5,18 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2026-10-23
+
+### Fixed
+- **ACIA transmit no longer drops characters under blind-delay drivers.**
+  Firmware like WozMon writes a byte then waits a fixed delay loop instead of
+  polling TDRE. The emulator models transmit time in CPU cycles, and that
+  window was longer than the firmware's delay, so the next write landed while
+  the transmitter was still "busy" and was silently discarded — producing
+  missing characters in serial output. The ACIA now queues bytes written
+  during the busy window into a transmit FIFO and sends them in order, so no
+  character is lost regardless of how the driver paces its writes.
+
 ## [1.3.5] - 2026-10-23
 
 ### Fixed

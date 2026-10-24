@@ -246,13 +246,21 @@ export class ACIA68B50 implements Peripheral {
    * @param data Byte to transmit
    */
   transmitData(data: number): void {
+    const byte = data & 0xFF;
+
     if (this.transmitCyclesRemaining > 0) {
-      // Transmitter busy, ignore write
+      // Transmitter is still shifting out the previous byte. Real firmware
+      // that polls TDRE would wait; firmware that uses a fixed delay loop
+      // (like WozMon) assumes the delay is long enough. To avoid dropping
+      // characters when the emulator's cycle-accurate timing is longer than
+      // the firmware's delay, queue the byte instead of discarding it.
+      this.transmitBuffer.push(byte);
+      this.statusRegister &= ~ACIAStatusBits.TDRE;
       return;
     }
 
-    this.transmitDataRegister = data & 0xFF;
-    this.transmitCyclesRemaining = this.cyclesPerBit * 10; // Start bit + 8 data bits + stop bit
+    this.transmitDataRegister = byte;
+    this.transmitCyclesRemaining = this.cyclesPerBit * 10; // start + 8 data + stop
     this.statusRegister &= ~ACIAStatusBits.TDRE;
   }
 
@@ -377,9 +385,19 @@ export class ACIA68B50 implements Peripheral {
     if (this.txDebugCallback) {
       this.txDebugCallback(this.transmitDataRegister);
     }
-    
-    this.statusRegister |= ACIAStatusBits.TDRE;
+
     this.transmitCyclesRemaining = 0;
+
+    // If more bytes were queued while the transmitter was busy, start the
+    // next one immediately so nothing is lost.
+    if (this.transmitBuffer.length > 0) {
+      this.transmitDataRegister = this.transmitBuffer.shift()!;
+      this.transmitCyclesRemaining = this.cyclesPerBit * 10;
+      // TDRE stays clear — still busy
+    } else {
+      this.statusRegister |= ACIAStatusBits.TDRE;
+    }
+
     this.updateInterruptStatus();
   }
 
