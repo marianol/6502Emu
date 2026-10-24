@@ -16,12 +16,12 @@
 
 ## Introduction
 
-The 6502 Emulator v1.4 is a cycle-accurate emulator designed for homebrew computer development. It provides:
+The 6502 Emulator v1.4 is an instruction-level emulator designed for homebrew computer development. It tracks accurate total cycle counts per instruction (though not sub-instruction bus timing). It provides:
 
 - **Complete 6502/65C02 CPU emulation** using the improved MyLittle6502 core
 - **Full 65C02 CMOS instruction set** - activated via `cpu.type: "65C02"`
 - **All 151 official 6502 opcodes** - no more "unknown opcode" errors
-- **Accurate cycle timing** for all instructions
+- **Accurate per-instruction cycle counts** (with page-crossing/branch penalties)
 - **Dual-mode architecture** - native C implementation with TypeScript fallback
 - Configurable memory mapping for RAM, ROM, and I/O (hex or decimal addresses)
 - Peripheral simulation (68B50 ACIA, 65C22 VIA) with partial address decoding

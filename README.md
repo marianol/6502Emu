@@ -1,6 +1,6 @@
 # 6502/65C02 Homebrew Computer Emulator v1.4
 
-A cycle-accurate 6502/65C02 emulator designed for homebrew computer development, featuring comprehensive debugging tools, peripheral simulation, a live serial terminal, and CC65 toolchain compatibility.
+A 6502/65C02 emulator designed for homebrew computer development, featuring instruction-level cycle counting, comprehensive debugging tools, peripheral simulation, a live serial terminal, and CC65 toolchain compatibility.
 
 ## Features
 
@@ -9,7 +9,10 @@ A cycle-accurate 6502/65C02 emulator designed for homebrew computer development,
 - **Full 65C02 CMOS instruction set** - selected via `cpu.type: "65C02"` in config
   (INC A, DEC A, PHX/PHY, PLX/PLY, BRA, BIT #, zero-page indirect, TSB/TRB, STZ, JMP (abs,X))
 - **Complete NMOS instruction set** - all 151 official 6502 opcodes implemented
-- **Cycle-accurate timing** for authentic hardware behavior
+- **Instruction-level cycle counting** - accurate total cycle counts per
+  instruction (including page-crossing and branch penalties), suitable for
+  timing-sensitive code like baud-rate delay loops. Not sub-instruction
+  (per-cycle bus) accurate.
 - **Configurable clock speeds** including baud-rate crystals (e.g. 1.8432 MHz)
 - **Dual-mode architecture** - native C implementation with TypeScript fallback
 
