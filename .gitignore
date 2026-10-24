@@ -9,6 +9,7 @@ dist/
 build/
 dist-standalone/
 dist-portable/
+6502-emulator-v*.zip
 
 # IDE files
 .vscode/

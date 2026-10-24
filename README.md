@@ -2,6 +2,21 @@
 
 A 6502/65C02 emulator designed for homebrew computer development, featuring instruction-level cycle counting, comprehensive debugging tools, peripheral simulation, a live serial terminal, and CC65 toolchain compatibility.
 
+## Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Portable Build](#portable-build)
+- [System Requirements](#system-requirements)
+- [Documentation](#documentation)
+- [Example Configurations](#example-configurations)
+- [CLI Commands](#cli-commands)
+- [Performance](#performance)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [Changelog](#changelog)
+- [License](#license)
+
 ## Features
 
 ### Core Emulation
@@ -373,49 +388,13 @@ We welcome contributions! Please see the [Development Guide](docs/development-gu
 - Testing requirements
 - Pull request process
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
+
 ## Author
 
 **Mariano Luna** - Creator and lead developer of the 6502/65C02 Homebrew Computer Emulator
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Version History
-
-### v1.4.0 (Current)
-- **Full 65C02 CMOS instruction set**: `cpu.type: "65C02"` now activates INC A, DEC A,
-  PHX/PHY, PLX/PLY, BRA, BIT #, zero-page indirect, TSB/TRB, STZ, and JMP (abs,X)
-- **Live serial terminal**: connect screen/minicom/picocom to the running emulator
-  through a clean raw PTY bridge (socat). Full bidirectional I/O, no corruption
-- **ACIA transmit FIFO**: firmware using blind delay loops (e.g. WozMon) no longer
-  drops characters
-- **ACIA register mirroring**: `registerSize` makes peripherals mirror across the
-  decoded window, matching hardware with partial address decoding
-- **Hex addresses in config**: numeric fields accept `"0xE000"` or decimal
-- **Config-relative ROM paths**: ROM files resolve relative to the config file
-- **Startup config loading**: loads a default config automatically, or `-l <config>`
-- **65C02-aware disassembler** and peripherals shown in the `regions` command
-- **New commands**: `serialdebug`, `disasm`/`d`
-- **Annotated reference config** (`examples/full-reference-config.yaml`)
-- **Bug fixes**: clean `quit` (no hang), correct ACIA timing tied to CPU clock,
-  no double-initialization on startup
-
-### v1.2.0
-- **Major CPU improvements**: Integrated improved MyLittle6502 core
-- **Complete instruction set**: All 151 official 6502 opcodes now supported
-- **Fixed cycle counting**: Proper timing for all instructions
-- **Resolved false breakpoints**: Fixed issue where 0-cycle returns triggered breakpoint detection
-- **Enhanced reliability**: AND, ORA, EOR, and all other missing instructions now work correctly
-- **Improved debugging**: More accurate execution tracing and timing
-
-### v1.0.0
-- Initial release with basic 6502/65C02 emulation
-- Interactive CLI with comprehensive command set
-- Peripheral simulation (ACIA, VIA)
-- Performance profiling and optimization
-- CC65 toolchain compatibility
-- Comprehensive documentation and examples
 
 ## Acknowledgments
 
@@ -424,6 +403,10 @@ MIT License - see LICENSE file for details.
 - **CC65** - Ullrich von Bassewitz's 6502 C compiler and toolchain
 - **6502.org** - Community resource for 6502 development
 - **Visual6502** - Transistor-level 6502 simulation project
+
+## License
+
+MIT License - see LICENSE file for details.
 
 ---
 

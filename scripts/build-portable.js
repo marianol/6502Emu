@@ -155,5 +155,28 @@ function dirSize(dir) {
 }
 const kb = Math.round(dirSize(outDir) / 1024);
 console.log('\n✅ Portable build complete: ' + outDir + ' (' + kb + ' KB)');
+
+// 8. Create a distributable zip named with version + platform + arch, since
+//    the bundled native addon only runs on the platform it was built on.
+const os = require('os');
+const platMap = { darwin: 'macos', linux: 'linux', win32: 'windows' };
+const plat = platMap[os.platform()] || os.platform();
+const zipName = `6502-emulator-v${pkg.version}-${plat}-${os.arch()}.zip`;
+const zipPath = path.join(root, zipName);
+try {
+  fs.rmSync(zipPath, { force: true });
+  // Zip the folder's contents under a top-level dir named after the zip stem.
+  const stem = zipName.replace(/\.zip$/, '');
+  const stemDir = path.join(root, stem);
+  fs.rmSync(stemDir, { recursive: true, force: true });
+  fs.cpSync(outDir, stemDir, { recursive: true });
+  execFileSync('zip', ['-r', '-q', zipName, stem], { cwd: root });
+  fs.rmSync(stemDir, { recursive: true, force: true });
+  const zipKb = Math.round(fs.statSync(zipPath).size / 1024);
+  console.log('📦 Distributable zip: ' + zipName + ' (' + zipKb + ' KB)');
+} catch (e) {
+  console.warn('Could not create zip (' + e.message + '); the folder is still usable.');
+}
+
 console.log('   Zip the folder and copy it anywhere with Node installed.');
 console.log('   Run:  ./dist-portable/6502-emulator');
