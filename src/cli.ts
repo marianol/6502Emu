@@ -1144,9 +1144,34 @@ export class EmulatorCLI {
  * Main entry point for CLI
  */
 export async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  const pkg = require('../package.json');
+
+  // Handle --help / --version before starting the emulator.
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(`6502/65C02 Homebrew Computer Emulator v${pkg.version}`);
+    console.log('');
+    console.log('Usage: 6502-emulator [options]');
+    console.log('');
+    console.log('Options:');
+    console.log('  -l, --load <config>   Load a config file on startup');
+    console.log('  -v, --version         Show version information');
+    console.log('  -h, --help            Show this help message');
+    console.log('');
+    console.log('With no --load, the default config is loaded if one is available.');
+    console.log('Once running, type "help" at the 6502> prompt for CLI commands.');
+    process.exit(0);
+  }
+
+  if (args.includes('--version') || args.includes('-v')) {
+    console.log(`6502/65C02 Homebrew Computer Emulator v${pkg.version}`);
+    if (pkg.author) console.log(`Author: ${pkg.author}`);
+    if (pkg.license) console.log(`License: ${pkg.license}`);
+    process.exit(0);
+  }
+
   // Parse -l / --load <config> from command line arguments
   let autoLoadConfig: string | undefined;
-  const args = process.argv.slice(2);
   for (let i = 0; i < args.length; i++) {
     if ((args[i] === '-l' || args[i] === '--load') && args[i + 1]) {
       autoLoadConfig = args[i + 1];

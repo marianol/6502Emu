@@ -78,15 +78,20 @@ let nativeAddon: any = null;
   // 3. Normal module-relative path (development / npm build)
   candidates.push('../../build/Release/fake6502_addon.node');
 
+  // Stay quiet for --help / --version so those produce clean output.
+  const quiet = process.argv.slice(2).some(
+    a => a === '--help' || a === '-h' || a === '--version' || a === '-v'
+  );
+
   for (const candidate of candidates) {
     try {
       nativeAddon = nodeRequire(candidate);
-      console.log('Native addon loaded successfully');
+      if (!quiet) console.log('Native addon loaded successfully');
       break;
     } catch { /* try next candidate */ }
   }
 
-  if (!nativeAddon) {
+  if (!nativeAddon && !quiet) {
     console.warn('Native addon not available, using fallback implementation');
   }
 }

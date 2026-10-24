@@ -5,6 +5,16 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-10-24
+
+### Fixed
+- `--help` / `-h` and `--version` / `-v` now work in all entry points, including
+  the portable build (previously the portable launcher ignored them and just ran
+  the emulator). These flags are handled in the shared CLI entry point so the repo
+  launcher and portable launcher behave consistently.
+- Suppressed the "Native addon loaded successfully" message for `--help`/`--version`
+  so those commands produce clean output.
+
 ## [1.6.0] - 2026-10-24
 
 ### Added
