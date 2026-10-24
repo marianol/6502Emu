@@ -57,14 +57,38 @@ export interface CPU6502 {
   setMemoryCallbacks(read: MemoryReadCallback, write: MemoryWriteCallback): void;
 }
 
-// Import the native addon
-let nativeAddon: any;
-try {
-  nativeAddon = require('../../build/Release/fake6502_addon.node');
-  console.log('Native addon loaded successfully');
-} catch (error) {
-  console.warn('Native addon not available, using fallback implementation:', error instanceof Error ? error.message : String(error));
-  nativeAddon = null;
+// Import the native addon.
+// We try several locations so this works both as a normal Node module and as a
+// bundled single executable (SEA), where the addon ships next to the binary.
+let nativeAddon: any = null;
+{
+  // `require` is available both in normal CJS and in the esbuild CJS bundle.
+  const nodeRequire: NodeRequire = require;
+
+  const candidates: string[] = [];
+  // 1. Alongside the executable (SEA: addon copied next to the binary)
+  try {
+    const path = nodeRequire('path');
+    const exeDir = path.dirname(process.execPath);
+    candidates.push(path.join(exeDir, 'fake6502_addon.node'));
+    candidates.push(path.join(exeDir, 'build', 'Release', 'fake6502_addon.node'));
+  } catch { /* ignore */ }
+  // 2. Environment override
+  if (process.env.FAKE6502_ADDON) candidates.push(process.env.FAKE6502_ADDON);
+  // 3. Normal module-relative path (development / npm build)
+  candidates.push('../../build/Release/fake6502_addon.node');
+
+  for (const candidate of candidates) {
+    try {
+      nativeAddon = nodeRequire(candidate);
+      console.log('Native addon loaded successfully');
+      break;
+    } catch { /* try next candidate */ }
+  }
+
+  if (!nativeAddon) {
+    console.warn('Native addon not available, using fallback implementation');
+  }
 }
 
 /**

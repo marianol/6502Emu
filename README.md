@@ -1,4 +1,4 @@
-# 6502/65C02 Homebrew Computer Emulator v1.4
+# 6502/65C02 Homebrew Computer Emulator v1.5
 
 A 6502/65C02 emulator designed for homebrew computer development, featuring instruction-level cycle counting, comprehensive debugging tools, peripheral simulation, a live serial terminal, and CC65 toolchain compatibility.
 
@@ -165,7 +165,7 @@ The `bin/6502-emulator` script provides:
 
 ```bash
 $ bin/6502-emulator
-6502/65C02 Homebrew Computer Emulator v1.4.0
+6502/65C02 Homebrew Computer Emulator v1.5.0
 Type "help" for available commands, "quit" to exit
 
 No config specified, loading default: bin/config/simple6502-config.json
@@ -192,6 +192,39 @@ Execution started
 6502> quit
 Goodbye!
 ```
+
+## Portable Build
+
+If you want to run the emulator on another machine without cloning the repo,
+build a portable bundle:
+
+```bash
+npm run build:portable
+```
+
+This produces a small, self-contained `dist-portable/` folder (~370 KB):
+
+```
+dist-portable/
+├── 6502-emulator          launcher (run this)
+├── emulator.cjs           bundled emulator code
+├── fake6502_addon.node    native CPU core
+├── config/                default config + BIOS files
+└── README.txt             usage notes
+```
+
+Zip that folder, copy it anywhere, unzip, and run it — the **only** requirement
+on the target machine is Node.js installed (plus optional socat for the serial
+terminal). No `npm install`, no build step, no repo clone.
+
+```bash
+./6502-emulator                         # loads the default config
+./6502-emulator -l config/simple6502-config.json
+```
+
+Note: `fake6502_addon.node` is compiled for a specific OS/CPU architecture, so a
+portable build runs on the same platform family it was built on. For a different
+platform, run `npm run build:portable` there.
 
 ## System Requirements
 
@@ -360,4 +393,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**6502/65C02 Homebrew Computer Emulator v1.4** - Bringing vintage computing to modern development workflows with a full 65C02 instruction set and a live serial terminal.
+**6502/65C02 Homebrew Computer Emulator v1.5** - Bringing vintage computing to modern development workflows with a full 65C02 instruction set and a live serial terminal.
