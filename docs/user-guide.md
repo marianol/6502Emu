@@ -1,4 +1,4 @@
-# 6502 Emulator User Guide v1.2
+# 6502 Emulator User Guide v1.4
 
 ## Table of Contents
 
@@ -8,21 +8,24 @@
 4. [Configuration](#configuration)
 5. [Loading Programs](#loading-programs)
 6. [Using Peripherals](#using-peripherals)
-7. [Debugging Features](#debugging-features)
-8. [Performance Optimization](#performance-optimization)
-9. [CC65 Integration](#cc65-integration)
-10. [Troubleshooting](#troubleshooting)
+7. [Serial Terminal](#serial-terminal)
+8. [Debugging Features](#debugging-features)
+9. [Performance Optimization](#performance-optimization)
+10. [CC65 Integration](#cc65-integration)
+11. [Troubleshooting](#troubleshooting)
 
 ## Introduction
 
-The 6502 Emulator v1.2 is a cycle-accurate emulator designed for homebrew computer development. It provides:
+The 6502 Emulator v1.4 is a cycle-accurate emulator designed for homebrew computer development. It provides:
 
 - **Complete 6502/65C02 CPU emulation** using the improved MyLittle6502 core
+- **Full 65C02 CMOS instruction set** - activated via `cpu.type: "65C02"`
 - **All 151 official 6502 opcodes** - no more "unknown opcode" errors
 - **Accurate cycle timing** for all instructions
 - **Dual-mode architecture** - native C implementation with TypeScript fallback
-- Configurable memory mapping for RAM, ROM, and I/O
-- Peripheral simulation (68B50 ACIA, 65C22 VIA)
+- Configurable memory mapping for RAM, ROM, and I/O (hex or decimal addresses)
+- Peripheral simulation (68B50 ACIA, 65C22 VIA) with partial address decoding
+- **Live serial terminal** - connect screen/minicom/picocom to the running emulator
 - Comprehensive debugging tools with reliable breakpoint detection
 - CC65 toolchain compatibility
 - Performance profiling and optimization
@@ -592,6 +595,83 @@ timer_isr:
 @exit:
   RTI           ; Return from interrupt
 ```
+
+## Serial Terminal
+
+The ACIA can be connected to a real terminal program so you can interact with
+your firmware exactly as you would over a physical serial link.
+
+### Enabling the PTY
+
+Set `serialPort` to `"pty"` on the ACIA in your config:
+
+```json
+"acia": {
+  "baseAddress": "0x7F70",
+  "registerSize": 4,
+  "baudRate": 28800,
+  "serialPort": "pty"
+}
+```
+
+On startup the emulator prints the device path to connect to:
+
+```
+┌─────────────────────────────────────────────────┐
+│  ACIA PTY ready (via socat)                     │
+│  Connect with:                                  │
+│  screen /dev/ttys003 28800                      │
+└─────────────────────────────────────────────────┘
+```
+
+### Connecting
+
+In a second terminal window:
+
+```bash
+screen /dev/ttys003 28800
+# or
+minicom -D /dev/ttys003
+# or
+picocom -b 28800 /dev/ttys003
+```
+
+Everything your firmware transmits via the ACIA appears in that window, and
+anything you type is delivered to the ACIA's receive register. To exit screen:
+`Ctrl-A` then `K`.
+
+### How it works
+
+The emulator uses [socat](http://www.dest-unreach.org/socat/) to create a raw
+pseudo-terminal pair (`pty,raw,echo=0`). Node owns the master end; the slave is
+the `/dev/ttysNNN` device you connect to. Because both ends are raw, there is no
+line-discipline processing — bytes pass through untouched. Install socat with
+`brew install socat` (macOS) or `apt install socat` (Linux). If socat is not
+available, ACIA output falls back to stdout.
+
+### Debugging serial output
+
+If you are not sure whether your firmware is transmitting, toggle `serialdebug`
+before running. It prints a live hex dump of every byte the ACIA transmits:
+
+```
+6502> serialdebug
+Serial debug ON — ACIA TX bytes will be shown as hex dump.
+6502> run
+[SERIAL TX] 36 35 30 32 20 42 49 4F 53 ...  |6502 BIOS ...|
+```
+
+If bytes appear here but not in your terminal, the issue is on the terminal side
+(baud rate, wrong device). If nothing appears, the firmware is not reaching its
+transmit code — check the ACIA base address and that the control register is
+being written.
+
+### A note on transmit timing
+
+Some firmware (such as WozMon) sends a byte and then runs a fixed delay loop
+instead of polling the transmit-ready (TDRE) status bit. The emulator accepts
+bytes written during the transmit window into a small FIFO so none are dropped,
+matching the double-buffered behaviour of a real 68B50.
 
 ## Debugging Features
 

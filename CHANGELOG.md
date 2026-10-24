@@ -5,6 +5,33 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-23
+
+Minor release consolidating a working end-to-end homebrew emulator with a live
+serial terminal and full 65C02 support. Highlights since 1.2.0:
+
+### Added
+- Full 65C02 CMOS instruction set, selectable via `cpu.type: "65C02"`
+- Live serial terminal via a raw socat PTY bridge; connect screen/minicom/picocom
+- `registerSize` for ACIA/VIA to model partial address decoding (register mirroring)
+- Hex addresses in config files (`"0xE000"`) alongside decimal
+- ROM paths resolved relative to the config file
+- `-l` / `--load <config>` startup flag; default config loaded when none given
+- `serialdebug` command (live ACIA TX hex dump) and 65C02-aware `disasm`/`d`
+- Peripherals shown in the `regions` command with address ranges
+- Annotated reference config (`examples/full-reference-config.yaml`)
+- Test BIOS binaries for serial echo and WozMon
+
+### Fixed
+- ACIA transmit FIFO so blind-delay drivers (WozMon) don't drop characters
+- ACIA register mirroring across the decoded window
+- ACIA timing tied to the configured CPU clock (supports baud-rate crystals)
+- `quit` no longer hangs the terminal
+- No double-initialization / double config block on startup
+- All example configs corrected (hex, registerSize, RAM/IO layout, ROM paths)
+
+See 1.3.x entries below for the detailed per-fix history.
+
 ## [1.3.6] - 2026-10-23
 
 ### Fixed
