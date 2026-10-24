@@ -335,4 +335,48 @@ export class VIA65C22Implementation implements VIA65C22 {
   getShiftRegister(): number {
     return this.shiftRegister;
   }
+
+  // ── Read-only inspection getters (no side effects) ──
+  // These let tooling (e.g. the web dashboard) read state without the
+  // clear-on-read side effects that read(offset) has for some registers.
+
+  /** Port A data direction register (1 = output, 0 = input per bit) */
+  getPortADirection(): number {
+    return this.portADirection;
+  }
+
+  /** Port B data direction register (1 = output, 0 = input per bit) */
+  getPortBDirection(): number {
+    return this.portBDirection;
+  }
+
+  /** Current Port A data latch */
+  getPortAData(): number {
+    return this.portAData;
+  }
+
+  /** Current Port B data latch */
+  getPortBData(): number {
+    return this.portBData;
+  }
+
+  /** Auxiliary Control Register */
+  getAuxiliaryControlRegister(): number {
+    return this.auxiliaryControlRegister;
+  }
+
+  /** Peripheral Control Register */
+  getPeripheralControlRegister(): number {
+    return this.peripheralControlRegister;
+  }
+
+  /** Interrupt Enable Register */
+  getInterruptEnableRegister(): number {
+    return this.interruptEnableRegister;
+  }
+
+  /** Whether each timer is currently running */
+  getTimerState(): { timer1Running: boolean; timer2Running: boolean } {
+    return { timer1Running: this.timer1Running, timer2Running: this.timer2Running };
+  }
 }

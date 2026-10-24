@@ -296,6 +296,11 @@ export class ACIA68B50 implements Peripheral {
     this.txDebugCallback = cb;
   }
 
+  /** Current control register value (read-only, no side effects) */
+  getControlRegister(): number {
+    return this.controlRegister;
+  }
+
   /**
    * Set the CPU clock frequency used for baud rate timing calculations.
    * Must be called before setBaudRate to take effect.
