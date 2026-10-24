@@ -106,9 +106,9 @@ export class DashboardServer {
         const start = parseInt(url.searchParams.get('start') || '0', 16) || 0;
         let length = parseInt(url.searchParams.get('length') || '256', 10) || 256;
         length = Math.max(1, Math.min(length, 4096)); // clamp
-        const bytes = this.emulator.getMemoryInspector().readRange(start, length);
+        const bytes = this.peekRange(start, length);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ start, length, bytes: Array.from(bytes) }));
+        res.end(JSON.stringify({ start, length, bytes }));
         return;
       }
 
@@ -118,6 +118,27 @@ export class DashboardServer {
       res.writeHead(500, { 'Content-Type': 'text/plain' });
       res.end('Error: ' + (err instanceof Error ? err.message : String(err)));
     }
+  }
+
+  /**
+   * Read a range of memory for inspection, side-effect-free and without
+   * "unmapped memory" warnings. Peripheral (I/O) addresses route to the
+   * peripheral hub's peek(); RAM/ROM route to the memory manager's peek().
+   */
+  private peekRange(start: number, length: number): number[] {
+    const bus = this.emulator.getSystemBus();
+    const mem = bus.getMemory();
+    const hub = bus.getPeripheralHub();
+    const out: number[] = [];
+    for (let i = 0; i < length; i++) {
+      const addr = (start + i) & 0xFFFF;
+      if (hub.isPeripheralAddress(addr)) {
+        out.push(hub.peek(addr) & 0xFF);
+      } else {
+        out.push(mem.peek(addr) & 0xFF);
+      }
+    }
+    return out;
   }
 
   /**

@@ -302,6 +302,25 @@ export class ACIA68B50 implements Peripheral {
   }
 
   /**
+   * Side-effect-free register read for inspection tools.
+   * offset 0 = status, offset 1 = receive data register (peeked, NOT consumed).
+   */
+  peek(offset: number): number {
+    switch (offset & 0x01) {
+      case 0:
+        return this.getStatusRegister();
+      case 1:
+        // Return the next byte that read() would return, WITHOUT shifting it
+        // out of the buffer or clearing RDRF.
+        return this.receiveBuffer.length > 0
+          ? this.receiveBuffer[0]
+          : this.receiveDataRegister;
+      default:
+        return 0xFF;
+    }
+  }
+
+  /**
    * Set the CPU clock frequency used for baud rate timing calculations.
    * Must be called before setBaudRate to take effect.
    * @param hz CPU clock speed in Hz

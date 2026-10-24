@@ -32,6 +32,15 @@ export interface Peripheral {
    * @returns true if an interrupt is pending
    */
   getInterruptStatus(): boolean;
+
+  /**
+   * Side-effect-free read of a register, for inspection tools (debugger,
+   * web dashboard). Unlike read(), this must NOT consume data or clear flags.
+   * Optional — if not implemented, callers should fall back gracefully.
+   * @param offset Register offset within the peripheral's address space
+   * @returns The register value without side effects
+   */
+  peek?(offset: number): number;
 }
 
 /**
@@ -111,6 +120,23 @@ export class PeripheralHub {
       return registration.peripheral.read(offset);
     }
     return 0xFF; // Return 0xFF for unmapped addresses
+  }
+
+  /**
+   * Side-effect-free read of a peripheral register, for inspection tools.
+   * Uses the peripheral's peek() if available, else falls back to 0xFF
+   * (never calls read(), which may have side effects).
+   * @param address Absolute memory address
+   * @returns The value, or 0xFF if no peripheral handles this address
+   */
+  peek(address: number): number {
+    const registration = this.findPeripheral(address);
+    if (registration) {
+      const offset = address - registration.startAddress;
+      const p = registration.peripheral;
+      return p.peek ? p.peek(offset) : 0xFF;
+    }
+    return 0xFF;
   }
 
   /**
