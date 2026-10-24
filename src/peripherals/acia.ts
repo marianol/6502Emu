@@ -94,7 +94,10 @@ export class ACIA68B50 implements Peripheral {
    * @returns Register value
    */
   read(offset: number): number {
-    switch (offset) {
+    // The 68B50 has only 2 registers, selected by A0. When the chip is mapped
+    // across a wider window (registerSize > 2), higher address lines are not
+    // decoded, so the registers mirror. Mask to the low bit to emulate that.
+    switch (offset & 0x01) {
       case 0: // Status Register
         return this.getStatusRegister();
       
@@ -108,11 +111,12 @@ export class ACIA68B50 implements Peripheral {
 
   /**
    * Write to ACIA register
-   * @param offset Register offset (0 = Control, 1 = Data)
+   * @param offset Register offset (even = Control, odd = Data; mirrored)
    * @param value Value to write
    */
   write(offset: number, value: number): void {
-    switch (offset) {
+    // Mirror across the decoded window — see read() comment.
+    switch (offset & 0x01) {
       case 0: // Control Register
         this.setControlRegister(value);
         break;
@@ -242,13 +246,21 @@ export class ACIA68B50 implements Peripheral {
    * @param data Byte to transmit
    */
   transmitData(data: number): void {
+    const byte = data & 0xFF;
+
     if (this.transmitCyclesRemaining > 0) {
-      // Transmitter busy, ignore write
+      // Transmitter is still shifting out the previous byte. Real firmware
+      // that polls TDRE would wait; firmware that uses a fixed delay loop
+      // (like WozMon) assumes the delay is long enough. To avoid dropping
+      // characters when the emulator's cycle-accurate timing is longer than
+      // the firmware's delay, queue the byte instead of discarding it.
+      this.transmitBuffer.push(byte);
+      this.statusRegister &= ~ACIAStatusBits.TDRE;
       return;
     }
 
-    this.transmitDataRegister = data & 0xFF;
-    this.transmitCyclesRemaining = this.cyclesPerBit * 10; // Start bit + 8 data bits + stop bit
+    this.transmitDataRegister = byte;
+    this.transmitCyclesRemaining = this.cyclesPerBit * 10; // start + 8 data + stop
     this.statusRegister &= ~ACIAStatusBits.TDRE;
   }
 
@@ -373,9 +385,19 @@ export class ACIA68B50 implements Peripheral {
     if (this.txDebugCallback) {
       this.txDebugCallback(this.transmitDataRegister);
     }
-    
-    this.statusRegister |= ACIAStatusBits.TDRE;
+
     this.transmitCyclesRemaining = 0;
+
+    // If more bytes were queued while the transmitter was busy, start the
+    // next one immediately so nothing is lost.
+    if (this.transmitBuffer.length > 0) {
+      this.transmitDataRegister = this.transmitBuffer.shift()!;
+      this.transmitCyclesRemaining = this.cyclesPerBit * 10;
+      // TDRE stays clear — still busy
+    } else {
+      this.statusRegister |= ACIAStatusBits.TDRE;
+    }
+
     this.updateInterruptStatus();
   }
 

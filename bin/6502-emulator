@@ -18,6 +18,14 @@ const distPath = path.join(projectRoot, 'dist', 'cli.js');
 const srcPath = path.join(projectRoot, 'src', 'cli.ts');
 const packageJsonPath = path.join(projectRoot, 'package.json');
 
+// Command-line arguments to forward to the CLI process (everything after the
+// script name, excluding launcher-only flags handled below like --build).
+const cliArgs = process.argv.slice(2).filter(a => a !== '--build');
+
+// Default config to load when no -l / --load flag is given.
+// Lives next to this launcher in bin/config/.
+const defaultConfigPath = path.join(scriptDir, 'config', 'simple6502-config.json');
+
 // Check if we're in a valid 6502-emulator project directory
 if (!fs.existsSync(packageJsonPath)) {
   console.error('Error: Cannot find 6502-emulator project files.');
@@ -53,10 +61,10 @@ function runCLI() {
       
       // Run the built version by spawning it as a separate process
       console.log('Starting 6502/65C02 Emulator (built version)...');
-      const cliProcess = spawn('node', [distPath], {
+      const cliProcess = spawn('node', [distPath, ...cliArgs], {
         stdio: 'inherit',
         cwd: projectRoot,
-        env: { ...process.env, EMU_LAUNCH_DIR: process.cwd() }
+        env: { ...process.env, EMU_LAUNCH_DIR: process.cwd(), EMU_DEFAULT_CONFIG: defaultConfigPath }
       });
       
       cliProcess.on('exit', (code) => {
@@ -98,10 +106,10 @@ function runDevMode() {
     tsNode.on('close', (code) => {
       if (code === 0) {
         // ts-node is available, run the TypeScript source
-        const cliProcess = spawn('npx', ['ts-node', srcPath], {
+        const cliProcess = spawn('npx', ['ts-node', srcPath, ...cliArgs], {
           stdio: 'inherit',
           cwd: projectRoot,
-          env: { ...process.env, EMU_LAUNCH_DIR: process.cwd() }
+          env: { ...process.env, EMU_LAUNCH_DIR: process.cwd(), EMU_DEFAULT_CONFIG: defaultConfigPath }
         });
         
         cliProcess.on('exit', (code) => {
@@ -133,9 +141,14 @@ if (args.includes('--help') || args.includes('-h')) {
   console.log('Usage: 6502-emulator [options]');
   console.log('');
   console.log('Options:');
-  console.log('  --help, -h     Show this help message');
-  console.log('  --version, -v  Show version information');
-  console.log('  --build        Build the project before running');
+  console.log('  --help, -h            Show this help message');
+  console.log('  --version, -v         Show version information');
+  console.log('  --load, -l <config>   Load a config file on startup');
+  console.log('  --build               Build the project before running');
+  console.log('');
+  console.log('Examples:');
+  console.log('  6502-emulator -l config/simple6502-config.json');
+  console.log('  6502-emulator --load /path/to/my-system.json');
   console.log('');
   console.log('This script will automatically use the built version if available,');
   console.log('or fall back to development mode using ts-node.');

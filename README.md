@@ -1,18 +1,22 @@
-# 6502/65C02 Homebrew Computer Emulator v1.0
+# 6502/65C02 Homebrew Computer Emulator v1.4
 
-A cycle-accurate 6502/65C02 emulator designed for homebrew computer development, featuring comprehensive debugging tools, peripheral simulation, and CC65 toolchain compatibility.
+A cycle-accurate 6502/65C02 emulator designed for homebrew computer development, featuring comprehensive debugging tools, peripheral simulation, a live serial terminal, and CC65 toolchain compatibility.
 
 ## Features
 
 ### Core Emulation
 - **Accurate 6502/65C02 CPU emulation** using the improved MyLittle6502 core
-- **Complete instruction set support** - all 151 official 6502 opcodes implemented
+- **Full 65C02 CMOS instruction set** - selected via `cpu.type: "65C02"` in config
+  (INC A, DEC A, PHX/PHY, PLX/PLY, BRA, BIT #, zero-page indirect, TSB/TRB, STZ, JMP (abs,X))
+- **Complete NMOS instruction set** - all 151 official 6502 opcodes implemented
 - **Cycle-accurate timing** for authentic hardware behavior
-- **Configurable clock speeds** from 1KHz to 10MHz with adaptive control
+- **Configurable clock speeds** including baud-rate crystals (e.g. 1.8432 MHz)
 - **Dual-mode architecture** - native C implementation with TypeScript fallback
 
 ### Memory Management
 - **Flexible memory mapping** for RAM, ROM, and I/O regions
+- **Hex or decimal addresses in config** - write `"0xE000"` or `57344`, your choice
+- **Config-relative ROM paths** - keep configs and ROM images together in one folder
 - **Multiple ROM format support** (binary, Intel HEX, Motorola S-record)
 - **Memory region prioritization** (ROM > I/O > RAM)
 - **Runtime memory manipulation** with write and poke commands
@@ -20,8 +24,17 @@ A cycle-accurate 6502/65C02 emulator designed for homebrew computer development,
 ### Peripheral Simulation
 - **68B50 ACIA** - Serial communication interface with configurable baud rates
 - **65C22 VIA** - Versatile interface adapter with timers, ports, and interrupts
+- **Partial address decoding** via `registerSize` - peripherals mirror across a
+  configurable window, matching real hardware that doesn't decode all address lines
 - **Extensible peripheral system** for adding custom hardware
 - **Real-time peripheral polling** with adaptive frequency control
+
+### Live Serial Terminal
+- **Connect a real terminal program** (screen, minicom, picocom) to the running emulator
+- **Clean raw PTY bridge** via socat - no character corruption or line-discipline interference
+- **Bidirectional I/O** - type into the terminal, see firmware output live
+- **Transmit FIFO** - handles firmware that uses blind delay loops (e.g. WozMon) without dropping characters
+- **`serialdebug` command** - live hex dump of ACIA transmit bytes for debugging
 
 ### Debugging & Development
 - **Interactive CLI** with comprehensive command set
@@ -60,6 +73,21 @@ npm install
 npm run build
 ```
 
+### Serial Terminal Prerequisite
+
+The live serial terminal uses [socat](http://www.dest-unreach.org/socat/) to create
+a clean pseudo-terminal bridge. Install it if you want to connect a terminal program:
+
+```bash
+# macOS
+brew install socat
+
+# Debian/Ubuntu
+sudo apt install socat
+```
+
+Without socat, the emulator still runs and ACIA output falls back to stdout.
+
 ### Global Installation
 
 To use the emulator from anywhere on your system:
@@ -86,29 +114,44 @@ After installation, you can run the emulator from anywhere:
 ### Basic Usage
 
 ```bash
-# Start the interactive CLI (if installed globally)
+# Start the emulator — loads the default config (bin/config/simple6502-config.json)
 6502-emulator
 
+# Or load a specific config on startup
+6502-emulator -l config/simple6502-config.json
+
 # Or run from project directory
-npm run cli
-# or
 bin/6502-emulator
-
-# Load a configuration and ROM
-6502> load examples/basic-homebrew-config.json
-6502> loadrom examples/test-program.bin 0200 binary
-
-# Inspect and execute
-6502> mem 0200 16
-6502> regs
-6502> step 5
-6502> quit
 ```
+
+Once started, the emulator loads a config automatically and drops you at the prompt:
+
+```
+6502> run           # start executing the loaded ROM
+6502> regs          # inspect CPU registers
+6502> mem 0300 16   # dump memory
+6502> d FF00        # disassemble (65C02-aware)
+6502> quit          # exit cleanly
+```
+
+### Connecting a Serial Terminal
+
+When your config sets `"serialPort": "pty"` on the ACIA, the emulator prints a
+device path on startup. Connect a terminal program to it in a second window:
+
+```bash
+screen /dev/ttysNNN 28800
+```
+
+Everything your firmware transmits appears there, and anything you type is sent
+back to the firmware's ACIA receive register.
 
 ### Launcher Script Features
 
 The `bin/6502-emulator` script provides:
 - **Self-contained execution** - works from any directory
+- **Default config on startup** - loads `bin/config/simple6502-config.json` if no `-l` given
+- **Load flag** - `-l` / `--load <config>` to load a specific config on startup
 - **Automatic fallback** - uses built version if available, otherwise development mode
 - **Built-in help** - `--help` for usage information
 - **Version display** - `--version` for version information
@@ -118,46 +161,33 @@ The `bin/6502-emulator` script provides:
 ### Example Session
 
 ```bash
-$ npm run cli
-6502/65C02 Homebrew Computer Emulator v1.0.0
+$ bin/6502-emulator
+6502/65C02 Homebrew Computer Emulator v1.4.0
 Type "help" for available commands, "quit" to exit
 
-6502> version
-6502/65C02 Homebrew Computer Emulator v1.0.0
-Description: A 6502/65C02 emulator for homebrew computer development
-License: MIT
+No config specified, loading default: bin/config/simple6502-config.json
+...
+┌─────────────────────────────────────────────────┐
+│  ACIA PTY ready (via socat)                     │
+│  Connect with:                                  │
+│  screen /dev/ttys003 28800                      │
+└─────────────────────────────────────────────────┘
+Configuration loaded from bin/config/simple6502-config.json
 
-6502> help
-Available commands:
-  load         - Load configuration from file
-  reset        - Reset the system
-  status       - Show system status and statistics
-  run          - Start continuous execution
-  stop         - Stop execution
-  pause        - Pause execution
-  step         - Execute single instruction
-  loadrom      - Load ROM image
-  regs         - Show CPU registers
-  mem          - Display memory contents
-  write        - Write byte(s) to memory
-  poke         - Write single byte to memory
-  regions      - Show memory regions (RAM, ROM, I/O)
-  break        - Set breakpoint
-  unbreak      - Remove breakpoint
-  speed        - Set clock speed in Hz
-  version      - Show emulator version
-  help         - Show available commands
-  quit         - Exit the emulator
+6502> regions
+Memory Map (4 regions):
+  Start  End    Size    Type
+  ------ ------ ------- ----
+  $0000  $7EFF  32512   RAM
+  $7F20  $7F2F  16      VIA (16 bytes)
+  $7F70  $7F73  4       ACIA (4 bytes)
+  $8000  $FFFF  32768   ROM
 
-6502> write 0200 A9 42 8D 00 02
-Wrote 5 byte(s) to 0200: A9 42 8D 00 02
+6502> run
+Execution started
 
-6502> mem 0200 8
-0200: A9 42 8D 00 02 00 00 00                         |.B......|
-
-6502> step 2
-Step 1: PC=0000 (7 cycles)
-Step 2: PC=0000 (7 cycles)
+6502> quit
+Goodbye!
 ```
 
 ## System Requirements
@@ -165,6 +195,7 @@ Step 2: PC=0000 (7 cycles)
 - **Node.js** 16 or later
 - **Python** 3.8+ (for native addon compilation)
 - **C++ compiler** (GCC, Clang, or MSVC)
+- **socat** (optional) - for the live serial terminal (`brew install socat` / `apt install socat`)
 
 ## Documentation
 
@@ -206,14 +237,22 @@ The project includes several pre-configured system examples:
 
 ### Debugging
 - `regs` - Show CPU registers and flags
-- `regions` - Show memory regions
+- `disasm <address> [length]` / `d` - Disassemble memory (65C02-aware)
+- `regions` - Show memory regions, including peripherals with address ranges
 - `break <address>` - Set breakpoint
 - `unbreak <address>` - Remove breakpoint
+- `serialdebug` - Toggle a live hex dump of ACIA transmit bytes
 
 ### Utility
 - `speed <hz>` - Set clock speed
 - `version` - Show version information
 - `help [command]` - Show help
+
+### Startup Options (command line)
+- `-l` / `--load <config>` - Load a config file on startup
+- `--version` / `-v` - Show version and exit
+- `--help` / `-h` - Show help and exit
+- `--build` - Build the project before running
 
 ## Performance
 
@@ -274,7 +313,25 @@ MIT License - see LICENSE file for details.
 
 ## Version History
 
-### v1.2.0 (Current)
+### v1.4.0 (Current)
+- **Full 65C02 CMOS instruction set**: `cpu.type: "65C02"` now activates INC A, DEC A,
+  PHX/PHY, PLX/PLY, BRA, BIT #, zero-page indirect, TSB/TRB, STZ, and JMP (abs,X)
+- **Live serial terminal**: connect screen/minicom/picocom to the running emulator
+  through a clean raw PTY bridge (socat). Full bidirectional I/O, no corruption
+- **ACIA transmit FIFO**: firmware using blind delay loops (e.g. WozMon) no longer
+  drops characters
+- **ACIA register mirroring**: `registerSize` makes peripherals mirror across the
+  decoded window, matching hardware with partial address decoding
+- **Hex addresses in config**: numeric fields accept `"0xE000"` or decimal
+- **Config-relative ROM paths**: ROM files resolve relative to the config file
+- **Startup config loading**: loads a default config automatically, or `-l <config>`
+- **65C02-aware disassembler** and peripherals shown in the `regions` command
+- **New commands**: `serialdebug`, `disasm`/`d`
+- **Annotated reference config** (`examples/full-reference-config.yaml`)
+- **Bug fixes**: clean `quit` (no hang), correct ACIA timing tied to CPU clock,
+  no double-initialization on startup
+
+### v1.2.0
 - **Major CPU improvements**: Integrated improved MyLittle6502 core
 - **Complete instruction set**: All 151 official 6502 opcodes now supported
 - **Fixed cycle counting**: Proper timing for all instructions
@@ -300,4 +357,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**6502/65C02 Homebrew Computer Emulator v1.2** - Bringing vintage computing to modern development workflows with complete 6502 instruction set support.
+**6502/65C02 Homebrew Computer Emulator v1.4** - Bringing vintage computing to modern development workflows with a full 65C02 instruction set and a live serial terminal.

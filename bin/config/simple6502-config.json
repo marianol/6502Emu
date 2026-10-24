@@ -10,7 +10,7 @@
     "ramStart": "0x0000",
     "romImages": [
       {
-        "file": "BIOS.bin",
+        "file": "BIOS-010.bin",
         "loadAddress": "0x8000",
         "format": "binary",
         "description": "BIOS ROM"

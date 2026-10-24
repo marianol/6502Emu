@@ -50,20 +50,41 @@ export class EmulatorCLI {
   /**
    * Start the CLI
    */
-  async start(): Promise<void> {
+  async start(configPath?: string): Promise<void> {
+    // Pause input handling until startup is finished so queued input
+    // (e.g. a piped "quit") can't race ahead of the config load.
+    this.rl.pause();
+
     // Get version from package.json
     const packageJson = require('../package.json');
     console.log(`6502/65C02 Homebrew Computer Emulator v${packageJson.version}`);
     console.log('Type "help" for available commands, "quit" to exit\n');
 
-    // Initialize with default configuration
-    try {
-      await this.emulator.initialize();
-    } catch (error) {
-      console.error('Failed to initialize emulator:', error);
-      process.exit(1);
+    // Load a config file on startup. If a path was given (-l / --load) use it;
+    // otherwise fall back to the default config next to the launcher. Loading
+    // a config file performs a full emulator initialization, so we do not call
+    // initialize() separately — that would double-register peripherals.
+    if (configPath) {
+      await this.handleLoad([configPath]);
+    } else {
+      // No config specified — try the default, fall back to built-in defaults.
+      const defaultConfig = process.env.EMU_DEFAULT_CONFIG;
+      if (defaultConfig && fs.existsSync(defaultConfig)) {
+        console.log(`No config specified, loading default: ${defaultConfig}`);
+        await this.handleLoad([defaultConfig]);
+      } else {
+        console.log('No config specified, starting with built-in default configuration.');
+        try {
+          await this.emulator.initialize();
+        } catch (error) {
+          console.error('Failed to initialize emulator:', error);
+          process.exit(1);
+        }
+      }
     }
 
+    // Startup complete — now accept input
+    this.rl.resume();
     this.rl.prompt();
 
     return new Promise((resolve) => {
@@ -716,6 +737,8 @@ export class EmulatorCLI {
       0x48: 1, 0x4A: 1, 0x58: 1, 0x60: 1, 0x68: 1, 0x6A: 1, 0x78: 1, 0x88: 1,
       0x8A: 1, 0x98: 1, 0x9A: 1, 0xA8: 1, 0xAA: 1, 0xB8: 1, 0xBA: 1, 0xC8: 1,
       0xCA: 1, 0xD8: 1, 0xE8: 1, 0xEA: 1, 0xF8: 1,
+      // 65C02 implied (1 byte): INC A, DEC A, PHY, PLY, PHX, PLX
+      0x1A: 1, 0x3A: 1, 0x5A: 1, 0x7A: 1, 0xDA: 1, 0xFA: 1,
       
       // Immediate/Zero Page/Relative (2 bytes)
       0x01: 2, 0x05: 2, 0x06: 2, 0x09: 2, 0x10: 2, 0x11: 2, 0x15: 2, 0x16: 2,
@@ -729,6 +752,10 @@ export class EmulatorCLI {
       0xC9: 2, 0xD0: 2, 0xD1: 2, 0xD5: 2, 0xD6: 2, 0xD9: 2, 0xE0: 2, 0xE1: 2,
       0xE4: 2, 0xE5: 2, 0xE6: 2, 0xE9: 2, 0xF0: 2, 0xF1: 2, 0xF5: 2, 0xF6: 2,
       0xF9: 2,
+      // 65C02 2-byte: BRA, BIT#, (zp) indirect, TSB/TRB zp, STZ zp/zp,X
+      0x80: 2, 0x89: 2,
+      0x12: 2, 0x32: 2, 0x52: 2, 0x72: 2, 0x92: 2, 0xB2: 2, 0xD2: 2, 0xF2: 2,
+      0x04: 2, 0x14: 2, 0x64: 2, 0x74: 2,
       
       // Absolute (3 bytes)
       0x0D: 3, 0x0E: 3, 0x1D: 3, 0x1E: 3, 0x20: 3, 0x2C: 3, 0x2D: 3, 0x2E: 3,
@@ -736,7 +763,9 @@ export class EmulatorCLI {
       0x6D: 3, 0x6E: 3, 0x7D: 3, 0x7E: 3, 0x8C: 3, 0x8D: 3, 0x8E: 3, 0x99: 3,
       0x9D: 3, 0xAC: 3, 0xAD: 3, 0xAE: 3, 0xBC: 3, 0xBD: 3, 0xBE: 3, 0xCC: 3,
       0xCD: 3, 0xCE: 3, 0xDD: 3, 0xDE: 3, 0xEC: 3, 0xED: 3, 0xEE: 3, 0xFD: 3,
-      0xFE: 3
+      0xFE: 3,
+      // 65C02 3-byte: TSB/TRB abs, STZ abs/abs,X, JMP (abs,X)
+      0x0C: 3, 0x1C: 3, 0x9C: 3, 0x9E: 3, 0x7C: 3
     };
     
     return lengths[opcode] || 1;
@@ -1015,8 +1044,7 @@ export class EmulatorCLI {
 
   private handleQuit(): void {
     console.log('Goodbye!');
-    this.emulator.stop();
-    this.emulator.shutdown();
+    this.emulator.shutdown();  // stops execution and releases serial/PTY resources
     this.running = false;
     this.rl.close();
     // Force exit to ensure PTY and any other async resources are released
@@ -1028,8 +1056,18 @@ export class EmulatorCLI {
  * Main entry point for CLI
  */
 export async function main(): Promise<void> {
+  // Parse -l / --load <config> from command line arguments
+  let autoLoadConfig: string | undefined;
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i++) {
+    if ((args[i] === '-l' || args[i] === '--load') && args[i + 1]) {
+      autoLoadConfig = args[i + 1];
+      break;
+    }
+  }
+
   const cli = new EmulatorCLI();
-  await cli.start();
+  await cli.start(autoLoadConfig);
 }
 
 // Run CLI if this file is executed directly

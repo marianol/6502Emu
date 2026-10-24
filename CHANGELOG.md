@@ -5,6 +5,106 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-23
+
+Minor release consolidating a working end-to-end homebrew emulator with a live
+serial terminal and full 65C02 support. Highlights since 1.2.0:
+
+### Added
+- Full 65C02 CMOS instruction set, selectable via `cpu.type: "65C02"`
+- Live serial terminal via a raw socat PTY bridge; connect screen/minicom/picocom
+- `registerSize` for ACIA/VIA to model partial address decoding (register mirroring)
+- Hex addresses in config files (`"0xE000"`) alongside decimal
+- ROM paths resolved relative to the config file
+- `-l` / `--load <config>` startup flag; default config loaded when none given
+- `serialdebug` command (live ACIA TX hex dump) and 65C02-aware `disasm`/`d`
+- Peripherals shown in the `regions` command with address ranges
+- Annotated reference config (`examples/full-reference-config.yaml`)
+- Test BIOS binaries for serial echo and WozMon
+
+### Fixed
+- ACIA transmit FIFO so blind-delay drivers (WozMon) don't drop characters
+- ACIA register mirroring across the decoded window
+- ACIA timing tied to the configured CPU clock (supports baud-rate crystals)
+- `quit` no longer hangs the terminal
+- No double-initialization / double config block on startup
+- All example configs corrected (hex, registerSize, RAM/IO layout, ROM paths)
+
+See 1.3.x entries below for the detailed per-fix history.
+
+## [1.3.6] - 2026-10-23
+
+### Fixed
+- **ACIA transmit no longer drops characters under blind-delay drivers.**
+  Firmware like WozMon writes a byte then waits a fixed delay loop instead of
+  polling TDRE. The emulator models transmit time in CPU cycles, and that
+  window was longer than the firmware's delay, so the next write landed while
+  the transmitter was still "busy" and was silently discarded — producing
+  missing characters in serial output. The ACIA now queues bytes written
+  during the busy window into a transmit FIFO and sends them in order, so no
+  character is lost regardless of how the driver paces its writes.
+
+## [1.3.5] - 2026-10-23
+
+### Fixed
+- **ACIA register mirroring.** With `registerSize` > 2, the 68B50 ACIA only
+  responded at offsets 0 and 1 and silently ignored writes to higher offsets.
+  Firmware relying on partial address decoding (e.g. writing the control
+  register at `$7F72` when the base is `$7F70`) had its ACIA config dropped,
+  producing no serial output. The register select now masks with `& 0x01` so
+  the two real registers mirror across the whole decoded window, matching how
+  a 68B50 behaves on hardware that doesn't decode A1.
+
+## [1.3.4] - 2026-10-23
+
+### Fixed
+- **Disassembler now decodes 65C02 opcodes.** The `disasm` / `d` command showed
+  `??? (3A)` for CMOS-only instructions because the disassembler's opcode table
+  predated the 65C02 core support. Added all 65C02 opcodes (INC A, DEC A, PHX/PHY,
+  PLX/PLY, BRA, BIT #, zero-page indirect, TSB/TRB, STZ, JMP (abs,X)) to the
+  disassembler and to both instruction-length tables (cli.ts and memory-inspector.ts)
+  so listings advance the program counter correctly past CMOS instructions.
+
+  Note: the 65C02 *execution* core was already correct since v1.3.0 — this was
+  purely a disassembly display gap.
+
+## [1.3.3] - 2026-10-22
+
+### Fixed
+- **`quit` no longer hangs the terminal.** The socat PTY bridge held the Node
+  event loop open through a blocking `fs.read` on the master fd. Rewritten to:
+  - Open the master PTY fd in non-blocking mode (`O_NONBLOCK`)
+  - Poll it on a timer instead of a chained blocking async read, so no syscall
+    is ever in flight at exit
+  - Spawn socat exactly once (previously spawned twice — a blocking `spawnSync`
+    then a second `spawn`, orphaning a PTY pair)
+  - Kill the socat process with SIGKILL and clear the poll timer on close()
+- Removed the duplicate "Execution stopped" message on quit. `stop()` now only
+  logs when it actually stops a running execution.
+
+## [1.3.2] - 2026-10-22
+
+### Changed
+- **Startup always loads a config file.** If `-l` / `--load` is given, that config
+  is loaded; otherwise the default config (`bin/config/simple6502-config.json`) is
+  loaded. This removes the previous double-initialization where the built-in default
+  ran first and a `-l` config loaded on top, producing two configuration blocks and
+  double-registering peripherals.
+- Input handling is paused until the startup config load completes, so piped or
+  queued input can no longer race ahead of initialization.
+
+## [1.3.1] - 2026-10-22
+
+### Added
+- **`-l` / `--load <config>` command-line flag** — load a config file on startup
+  instead of typing `load ...` at the prompt:
+  `./6502-emulator -l config/simple6502-config.json`
+
+### Fixed
+- Launcher now forwards command-line arguments to the CLI process. Previously
+  flags like `-l` were parsed only by the launcher and never reached the emulator,
+  so `-l` silently had no effect.
+
 ## [1.3.0] - 2026-10-22
 
 ### Added
