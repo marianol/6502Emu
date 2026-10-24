@@ -7,6 +7,8 @@ yarn-error.log*
 # Build outputs
 dist/
 build/
+dist-standalone/
+dist-portable/
 
 # IDE files
 .vscode/

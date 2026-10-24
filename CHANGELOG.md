@@ -5,6 +5,22 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-10-23
+
+### Added
+- **Portable build** (`npm run build:portable`). Produces a small (~370 KB)
+  self-contained `dist-portable/` folder: a launcher, the emulator bundled into
+  a single JS file (via esbuild), the native addon, and the default config/BIOS.
+  Zip it and run on any machine with Node.js installed — no npm install, no
+  build step, no repo clone. socat is still optional for the serial terminal.
+
+### Changed
+- Native addon loading is now location-flexible: it checks next to the
+  executable, a `FAKE6502_ADDON` env override, and the normal module path. This
+  makes the addon resolve correctly in the portable bundle.
+- Removed the unused `node-pty` dependency (the serial terminal uses socat now),
+  dropping a native dependency and the related postinstall step.
+
 ## [1.4.0] - 2026-10-23
 
 Minor release consolidating a working end-to-end homebrew emulator with a live
