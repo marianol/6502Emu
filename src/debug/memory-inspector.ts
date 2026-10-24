@@ -256,6 +256,37 @@ export class MemoryInspectorImpl implements MemoryInspector {
       case 0xD0: return { mnemonic: 'BNE', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
       case 0xF0: return { mnemonic: 'BEQ', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
 
+      // ── 65C02 CMOS-only instructions ──
+      case 0x1A: return { mnemonic: 'INC', operandDisplay: ' A' };
+      case 0x3A: return { mnemonic: 'DEC', operandDisplay: ' A' };
+      case 0x5A: return { mnemonic: 'PHY', operandDisplay: '' };
+      case 0x7A: return { mnemonic: 'PLY', operandDisplay: '' };
+      case 0xDA: return { mnemonic: 'PHX', operandDisplay: '' };
+      case 0xFA: return { mnemonic: 'PLX', operandDisplay: '' };
+      case 0x80: return { mnemonic: 'BRA', operandDisplay: ` $${this.calculateBranchTarget(addr, operand1).toString(16).padStart(4, '0').toUpperCase()}` };
+      case 0x89: return { mnemonic: 'BIT', operandDisplay: ` #$${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+      // Zero-page indirect (zp)
+      case 0x12: return { mnemonic: 'ORA', operandDisplay: ` ($${operand1.toString(16).padStart(2, '0').toUpperCase()})` };
+      case 0x32: return { mnemonic: 'AND', operandDisplay: ` ($${operand1.toString(16).padStart(2, '0').toUpperCase()})` };
+      case 0x52: return { mnemonic: 'EOR', operandDisplay: ` ($${operand1.toString(16).padStart(2, '0').toUpperCase()})` };
+      case 0x72: return { mnemonic: 'ADC', operandDisplay: ` ($${operand1.toString(16).padStart(2, '0').toUpperCase()})` };
+      case 0x92: return { mnemonic: 'STA', operandDisplay: ` ($${operand1.toString(16).padStart(2, '0').toUpperCase()})` };
+      case 0xB2: return { mnemonic: 'LDA', operandDisplay: ` ($${operand1.toString(16).padStart(2, '0').toUpperCase()})` };
+      case 0xD2: return { mnemonic: 'CMP', operandDisplay: ` ($${operand1.toString(16).padStart(2, '0').toUpperCase()})` };
+      case 0xF2: return { mnemonic: 'SBC', operandDisplay: ` ($${operand1.toString(16).padStart(2, '0').toUpperCase()})` };
+      // TSB / TRB
+      case 0x04: return { mnemonic: 'TSB', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+      case 0x0C: return { mnemonic: 'TSB', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+      case 0x14: return { mnemonic: 'TRB', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+      case 0x1C: return { mnemonic: 'TRB', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+      // STZ
+      case 0x64: return { mnemonic: 'STZ', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()}` };
+      case 0x74: return { mnemonic: 'STZ', operandDisplay: ` $${operand1.toString(16).padStart(2, '0').toUpperCase()},X` };
+      case 0x9C: return { mnemonic: 'STZ', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()}` };
+      case 0x9E: return { mnemonic: 'STZ', operandDisplay: ` $${operand16.toString(16).padStart(4, '0').toUpperCase()},X` };
+      // JMP (abs,X)
+      case 0x7C: return { mnemonic: 'JMP', operandDisplay: ` ($${operand16.toString(16).padStart(4, '0').toUpperCase()},X)` };
+
       // Add more instructions as needed...
       default:
         return { mnemonic: `??? (${opcode.toString(16).padStart(2, '0').toUpperCase()})`, operandDisplay: '' };
@@ -436,7 +467,9 @@ export class MemoryInspectorImpl implements MemoryInspector {
       0x48: 1, 0x4A: 1, 0x58: 1, 0x60: 1, 0x68: 1, 0x6A: 1, 0x78: 1, 0x88: 1,
       0x8A: 1, 0x98: 1, 0x9A: 1, 0xA8: 1, 0xAA: 1, 0xB8: 1, 0xBA: 1, 0xC8: 1,
       0xCA: 1, 0xD8: 1, 0xE8: 1, 0xEA: 1, 0xF8: 1,
-      
+      // 65C02 implied (1 byte): INC A, DEC A, PHY, PLY, PHX, PLX
+      0x1A: 1, 0x3A: 1, 0x5A: 1, 0x7A: 1, 0xDA: 1, 0xFA: 1,
+
       // Immediate/Zero Page/Relative (2 bytes)
       0x01: 2, 0x05: 2, 0x06: 2, 0x09: 2, 0x10: 2, 0x11: 2, 0x15: 2, 0x16: 2,
       0x19: 2, 0x21: 2, 0x24: 2, 0x25: 2, 0x26: 2, 0x29: 2, 0x30: 2, 0x31: 2,
@@ -449,14 +482,20 @@ export class MemoryInspectorImpl implements MemoryInspector {
       0xC9: 2, 0xD0: 2, 0xD1: 2, 0xD5: 2, 0xD6: 2, 0xD9: 2, 0xE0: 2, 0xE1: 2,
       0xE4: 2, 0xE5: 2, 0xE6: 2, 0xE9: 2, 0xF0: 2, 0xF1: 2, 0xF5: 2, 0xF6: 2,
       0xF9: 2,
-      
+      // 65C02 2-byte: BRA, BIT#, (zp) indirect, TSB/TRB zp, STZ zp/zp,X
+      0x80: 2, 0x89: 2,
+      0x12: 2, 0x32: 2, 0x52: 2, 0x72: 2, 0x92: 2, 0xB2: 2, 0xD2: 2, 0xF2: 2,
+      0x04: 2, 0x14: 2, 0x64: 2, 0x74: 2,
+
       // Absolute (3 bytes)
       0x0D: 3, 0x0E: 3, 0x1D: 3, 0x1E: 3, 0x20: 3, 0x2C: 3, 0x2D: 3, 0x2E: 3,
       0x3D: 3, 0x3E: 3, 0x4C: 3, 0x4D: 3, 0x4E: 3, 0x5D: 3, 0x5E: 3, 0x6C: 3,
       0x6D: 3, 0x6E: 3, 0x7D: 3, 0x7E: 3, 0x8C: 3, 0x8D: 3, 0x8E: 3, 0x99: 3,
       0x9D: 3, 0xAC: 3, 0xAD: 3, 0xAE: 3, 0xBC: 3, 0xBD: 3, 0xBE: 3, 0xCC: 3,
       0xCD: 3, 0xCE: 3, 0xDD: 3, 0xDE: 3, 0xEC: 3, 0xED: 3, 0xEE: 3, 0xFD: 3,
-      0xFE: 3
+      0xFE: 3,
+      // 65C02 3-byte: TSB/TRB abs, STZ abs/abs,X, JMP (abs,X)
+      0x0C: 3, 0x1C: 3, 0x9C: 3, 0x9E: 3, 0x7C: 3
     };
     
     return lengths[opcode] || 1;

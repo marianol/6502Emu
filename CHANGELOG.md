@@ -5,6 +5,19 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-10-23
+
+### Fixed
+- **Disassembler now decodes 65C02 opcodes.** The `disasm` / `d` command showed
+  `??? (3A)` for CMOS-only instructions because the disassembler's opcode table
+  predated the 65C02 core support. Added all 65C02 opcodes (INC A, DEC A, PHX/PHY,
+  PLX/PLY, BRA, BIT #, zero-page indirect, TSB/TRB, STZ, JMP (abs,X)) to the
+  disassembler and to both instruction-length tables (cli.ts and memory-inspector.ts)
+  so listings advance the program counter correctly past CMOS instructions.
+
+  Note: the 65C02 *execution* core was already correct since v1.3.0 — this was
+  purely a disassembly display gap.
+
 ## [1.3.3] - 2026-10-22
 
 ### Fixed
