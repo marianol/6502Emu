@@ -5,6 +5,17 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2026-10-24
+
+### Fixed
+- Serial RX dropped characters on fast paste. When pasting into the serial
+  terminal, the ACIA's tick() called the serial port's read() unconditionally
+  whenever data was available, consuming and discarding any byte that arrived
+  while a reception was still in progress — so only the first pasted character
+  survived. The read is now gated on the receiver being idle and the previous
+  byte having been consumed, so the serial port's buffer holds the pasted bytes
+  and the ACIA pulls them one at a time, in order.
+
 ## [1.6.1] - 2026-10-24
 
 ### Fixed
