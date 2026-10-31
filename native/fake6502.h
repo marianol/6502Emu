@@ -40,6 +40,7 @@ void cpu_set_memory_callbacks(read_func_t read_func, write_func_t write_func);
 void cpu_trigger_irq(void);
 void cpu_trigger_nmi(void);
 void cpu_clear_irq(void);
+void cpu_set_irq_line(int asserted);   // drive the level-sensitive /IRQ input
 int cpu_is_irq_pending(void);
 int cpu_is_nmi_pending(void);
 

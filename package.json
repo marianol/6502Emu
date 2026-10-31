@@ -1,6 +1,6 @@
 {
   "name": "6502-homebrew-emulator",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "A 6502/65C02 emulator for homebrew computer development",
   "main": "dist/emulator.js",
   "scripts": {

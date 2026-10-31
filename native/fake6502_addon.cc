@@ -107,6 +107,15 @@ Napi::Value ClearIRQ(const Napi::CallbackInfo& info) {
     return info.Env().Undefined();
 }
 
+Napi::Value SetIRQLine(const Napi::CallbackInfo& info) {
+    if (info.Length() < 1 || !info[0].IsNumber()) {
+        Napi::TypeError::New(info.Env(), "Expected number argument (0 = released, 1 = asserted)").ThrowAsJavaScriptException();
+        return info.Env().Undefined();
+    }
+    cpu_set_irq_line(info[0].As<Napi::Number>().Int32Value());
+    return info.Env().Undefined();
+}
+
 Napi::Value IsIRQPending(const Napi::CallbackInfo& info) {
     return Napi::Boolean::New(info.Env(), cpu_is_irq_pending());
 }
@@ -135,6 +144,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("triggerIRQ", Napi::Function::New(env, TriggerIRQ));
     exports.Set("triggerNMI", Napi::Function::New(env, TriggerNMI));
     exports.Set("clearIRQ", Napi::Function::New(env, ClearIRQ));
+    exports.Set("setIRQLine", Napi::Function::New(env, SetIRQLine));
     exports.Set("isIRQPending", Napi::Function::New(env, IsIRQPending));
     exports.Set("isNMIPending", Napi::Function::New(env, IsNMIPending));
     exports.Set("setCPUType", Napi::Function::New(env, SetCPUType));

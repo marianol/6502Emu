@@ -18,15 +18,31 @@ export class InterruptController {
   private nmiSources: Set<string> = new Set();
   private irqCallback?: () => void;
   private nmiCallback?: () => void;
+  private irqLineCallback?: (asserted: boolean) => void;
 
   /**
    * Set callback functions for interrupt handling
-   * @param irqCallback Function to call when IRQ is triggered
+   * @param irqCallback Function to call when IRQ is triggered (rising edge only)
    * @param nmiCallback Function to call when NMI is triggered
    */
   setCallbacks(irqCallback: () => void, nmiCallback: () => void): void {
     this.irqCallback = irqCallback;
     this.nmiCallback = nmiCallback;
+  }
+
+  /**
+   * Register a callback that follows the *level* of the combined IRQ line.
+   * It is called with true when the line goes active (first source asserts)
+   * and with false when it is released (last source clears, or reset).
+   *
+   * A 6502's /IRQ input is level-sensitive: it stays active until the device
+   * is serviced, and the CPU re-checks it whenever the I flag allows. The
+   * rising-edge irqCallback alone cannot model that (an interrupt raised
+   * while the I flag is set would be lost, and a second source asserting
+   * while another already holds the line would never be noticed).
+   */
+  setIrqLineCallback(callback: (asserted: boolean) => void): void {
+    this.irqLineCallback = callback;
   }
 
   /**
@@ -39,6 +55,9 @@ export class InterruptController {
       this.irqPending = true;
       if (this.irqCallback) {
         this.irqCallback();
+      }
+      if (this.irqLineCallback) {
+        this.irqLineCallback(true);
       }
     }
   }
@@ -64,7 +83,7 @@ export class InterruptController {
   clearIRQ(source: string = 'unknown'): void {
     this.irqSources.delete(source);
     if (this.irqSources.size === 0) {
-      this.irqPending = false;
+      this.releaseIrqLine();
     }
   }
 
@@ -84,7 +103,19 @@ export class InterruptController {
    */
   clearAllIRQ(): void {
     this.irqSources.clear();
+    this.releaseIrqLine();
+  }
+
+  /**
+   * Mark the combined IRQ line inactive, notifying the level callback only if
+   * it was actually active (so repeated clears don't spam the CPU).
+   */
+  private releaseIrqLine(): void {
+    const wasAsserted = this.irqPending;
     this.irqPending = false;
+    if (wasAsserted && this.irqLineCallback) {
+      this.irqLineCallback(false);
+    }
   }
 
   /**
@@ -144,7 +175,7 @@ export class InterruptController {
    * Reset the interrupt controller
    */
   reset(): void {
-    this.irqPending = false;
+    this.releaseIrqLine();
     this.nmiPending = false;
     this.irqSources.clear();
     this.nmiSources.clear();
