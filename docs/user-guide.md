@@ -1,4 +1,4 @@
-# 6502 Emulator User Guide v1.6
+# 6502 Emulator User Guide v1.7
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@
 
 ## Introduction
 
-The 6502 Emulator v1.6 is an instruction-level emulator designed for homebrew computer development. It tracks accurate total cycle counts per instruction (though not sub-instruction bus timing). It provides:
+The 6502 Emulator v1.7 is an instruction-level emulator designed for homebrew computer development. It tracks accurate total cycle counts per instruction (though not sub-instruction bus timing). It provides:
 
 - **Complete 6502/65C02 CPU emulation** using the improved MyLittle6502 core
 - **Full 65C02 CMOS instruction set** - activated via `cpu.type: "65C02"`

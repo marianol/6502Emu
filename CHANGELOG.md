@@ -5,6 +5,24 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-10-31
+
+Minor release that consolidates the 1.6.x fixes into a solid baseline for BIOS
+development. It includes the serial paste fix (1.6.2) and the level-sensitive
+IRQ fix that makes VIA timer interrupts work (1.6.3); see those entries below.
+
+### Added
+- `bin/config/simple6502.bin`: Simple6502 BIOS v0.9.0 with WozMon. Verified to
+  boot and print its banner over the ACIA.
+- `TODO.md`, listing the remaining work grouped by area, each item marked as
+  verified or from code reading.
+
+### Changed
+- The default config (`bin/config/simple6502-config.json`) now boots
+  `simple6502.bin` instead of `BIOS-010.bin`, so the emulator starts on real
+  firmware out of the box. `BIOS-010.bin` and `BIOS-SerialEcho.bin` remain in the
+  repo.
+
 ## [1.6.3] - 2026-10-24
 
 ### Fixed

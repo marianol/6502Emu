@@ -1,4 +1,4 @@
-# 6502/65C02 Homebrew Computer Emulator v1.6
+# 6502/65C02 Homebrew Computer Emulator v1.7
 
 A 6502/65C02 emulator designed for homebrew computer development, featuring instruction-level cycle counting, comprehensive debugging tools, peripheral simulation, a live serial terminal, and CC65 toolchain compatibility.
 
@@ -213,7 +213,7 @@ The `bin/6502-emulator` script provides:
 
 ```bash
 $ bin/6502-emulator
-6502/65C02 Homebrew Computer Emulator v1.6.0
+6502/65C02 Homebrew Computer Emulator v1.7.0
 Type "help" for available commands, "quit" to exit
 
 No config specified, loading default: bin/config/simple6502-config.json
@@ -410,4 +410,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**6502/65C02 Homebrew Computer Emulator v1.6** - Bringing vintage computing to modern development workflows with a full 65C02 instruction set and a live serial terminal.
+**6502/65C02 Homebrew Computer Emulator v1.7** - Bringing vintage computing to modern development workflows with a full 65C02 instruction set and a live serial terminal.

@@ -1,4 +1,4 @@
-# API Reference v1.6
+# API Reference v1.7
 
 ## Table of Contents
 
