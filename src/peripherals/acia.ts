@@ -164,10 +164,19 @@ export class ACIA68B50 implements Peripheral {
       }
     }
 
-    // Check for incoming data from serial port
-    if (this.serialPort && this.serialPort.hasData()) {
+    // Pull the next incoming byte from the serial port ONLY when the receiver
+    // is idle and the CPU has read the previous byte. Previously we called
+    // read() unconditionally whenever data was available, which consumed and
+    // discarded bytes that arrived while a reception was still in progress —
+    // so a fast paste lost all but the first character. Gating the read on
+    // receiver readiness lets the serial port's own buffer hold the pasted
+    // bytes until the ACIA is ready for each one, preserving order.
+    if (this.serialPort &&
+        this.receiveCyclesRemaining <= 0 &&
+        this.receiveBuffer.length === 0 &&
+        this.serialPort.hasData()) {
       const data = this.serialPort.read();
-      if (data !== null && this.receiveCyclesRemaining <= 0) {
+      if (data !== null) {
         this.startReception(data);
       }
     }
