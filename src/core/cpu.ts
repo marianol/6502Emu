@@ -281,6 +281,19 @@ export class CPU6502Emulator implements CPU6502 {
     // Fallback implementation would need interrupt handling
   }
   
+  /**
+   * Drive the level-sensitive /IRQ input (true = asserted, false = released).
+   * Used by the interrupt controller to mirror the combined state of all
+   * interrupting devices. The CPU takes the interrupt whenever the line is
+   * asserted and the I flag is clear, and the line is NOT consumed by doing so.
+   */
+  setIRQLine(asserted: boolean): void {
+    if (this.useNativeAddon) {
+      nativeAddon.setIRQLine(asserted ? 1 : 0);
+    }
+    // Fallback implementation would need interrupt handling
+  }
+
   isIRQPending(): boolean {
     if (this.useNativeAddon) {
       return nativeAddon.isIRQPending();
@@ -311,11 +324,16 @@ export class CPU6502Emulator implements CPU6502 {
   setInterruptController(controller: InterruptController): void {
     this.interruptController = controller;
     
-    // Set up interrupt controller callbacks to trigger CPU interrupts
+    // NMI is edge-triggered, so a one-shot trigger is the right model for it.
+    // IRQ is level-sensitive: it is driven through setIrqLineCallback below
+    // rather than the rising-edge callback (a no-op here), otherwise an IRQ
+    // raised while the I flag is set would be lost and could never be
+    // delivered after CLI.
     controller.setCallbacks(
-      () => this.triggerIRQ(),
+      () => { /* IRQ is level-driven via the line callback */ },
       () => this.triggerNMI()
     );
+    controller.setIrqLineCallback((asserted) => this.setIRQLine(asserted));
   }
   
   // Helper methods

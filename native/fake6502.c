@@ -15,6 +15,15 @@ static read_func_t memory_read = NULL;
 static write_func_t memory_write = NULL;
 
 // Interrupt state
+//
+// irq_line    - the level-sensitive /IRQ input, driven by the devices (VIA, ACIA...).
+//               It stays asserted until the device releases it (e.g. firmware clears
+//               the VIA interrupt flag), exactly like the wire-OR'd /IRQ line on a
+//               real 6502. It is NOT consumed when the CPU takes the interrupt.
+// irq_pending - a one-shot manual request (debugger / cpu.triggerIRQ()). It is held
+//               until the I flag allows it, then consumed.
+// nmi_pending - NMI is edge-triggered: consumed when taken.
+static int irq_line = 0;
 static int irq_pending = 0;
 static int nmi_pending = 0;
 
@@ -154,6 +163,7 @@ void cpu_reset(void) {
     set_status_6502(0x20 | 0x04); // FLAG_CONSTANT | FLAG_INTERRUPT
     set_cycles_6502(0);
     
+    irq_line = 0;
     irq_pending = 0;
     nmi_pending = 0;
 }
@@ -164,9 +174,13 @@ uint8_t cpu_step(void) {
         nmi6502();
         nmi_pending = 0;
         return 7; // Standard interrupt cycles
-    } else if (irq_pending) {
+    } else if ((irq_line || irq_pending) && !(status & FLAG_INTERRUPT)) {
+        // IRQ is only taken when the I flag is clear. While masked the request
+        // is simply left alone (NOT discarded), so an interrupt that became
+        // active during boot with I set is delivered as soon as firmware does
+        // CLI -- the behaviour of a real level-sensitive 6502 IRQ input.
         irq6502();
-        irq_pending = 0;
+        irq_pending = 0;   // manual one-shot consumed; irq_line stays until released
         return 7; // Standard interrupt cycles
     }
     
@@ -232,11 +246,17 @@ void cpu_trigger_nmi(void) {
 }
 
 void cpu_clear_irq(void) {
+    // Clears the manual one-shot request only; the device-driven line is
+    // released by the device itself via cpu_set_irq_line(0).
     irq_pending = 0;
 }
 
+void cpu_set_irq_line(int asserted) {
+    irq_line = asserted ? 1 : 0;
+}
+
 int cpu_is_irq_pending(void) {
-    return irq_pending;
+    return irq_line || irq_pending;
 }
 
 int cpu_is_nmi_pending(void) {

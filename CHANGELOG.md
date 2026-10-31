@@ -5,6 +5,34 @@ All notable changes to the 6502/65C02 Homebrew Computer Emulator will be documen
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2026-10-24
+
+### Fixed
+- **VIA timer (and all peripheral) interrupts were never delivered when the
+  CPU's I flag was set at the moment the interrupt became active.** Firmware that
+  starts a VIA timer during boot and only executes `CLI` later (a very common
+  pattern) received no interrupts at all, even though the VIA's IFR flag stayed
+  set. The IRQ input is now modelled as the level-sensitive line it is on a real
+  6502:
+  - the native core only consumes an IRQ request when it actually takes the
+    interrupt (previously a masked IRQ was silently discarded and 7 cycles were
+    wasted);
+  - the `InterruptController` reports the *level* of the combined IRQ line
+    (`setIrqLineCallback`) in addition to its existing rising-edge callback, and
+    the CPU follows that level (`cpu.setIRQLine()`, new native `setIRQLine`);
+  - the line stays asserted until the device is serviced, so an ISR that returns
+    without clearing the source is re-entered, as on hardware.
+- A second interrupting device is no longer ignored while another device already
+  holds the IRQ line (previously only the first rising edge reached the CPU).
+- `reset` now releases a held IRQ line.
+
+### Changed
+- `cpu.isIRQPending()` (and the dashboard's "IRQ pending") now reflects the IRQ
+  *line*, so it reads asserted while masked by the I flag.
+- `cpu.triggerIRQ()` (manual one-shot) is now held until the I flag allows it
+  instead of being discarded when masked. `DebugInspector.triggerIRQ()` holds the
+  line (source `debug`) until `clearIRQ()` is called.
+
 ## [1.6.1] - 2026-10-24
 
 ### Fixed
