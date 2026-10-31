@@ -54,8 +54,7 @@ The goal is not to overstate anything.
 
 ## Release and repo housekeeping
 
-- [ ] **Portable build packs uncommitted files** (verified). `scripts/build-portable.js` copies every `*.json` and `*.bin` in `bin/config/`, including untracked work in progress (`BIOS-013.bin` was already inside the v1.6.1 zip). Whitelist the files, or copy only git-tracked ones, and build release zips from a clean checkout of the tag.
-- [ ] **GitHub release for `v1.7.0`**, with `6502-emulator-v1.7.0-macos-arm64.zip` attached (web UI; there is no `gh` CLI). Build the zip from a clean checkout of the tag, not from a working tree with local files in `bin/config/`.
+- [ ] **GitHub release for `v1.7.0`**, with `6502-emulator-v1.7.0-macos-arm64.zip` attached (web UI; there is no `gh` CLI). Build it with `npm run build:portable` from the tagged commit. The script bundles only git-tracked config files and warns if tracked files have uncommitted changes.
 - [ ] **Platform support.** Only macOS arm64 has been tested. Linux is untested. On Windows there is no serial terminal (socat), and the portable build uses `zip` and `chmod`.
 - [ ] **Delete merged branches**, local and remote (all verified merged into `main`): `feature/standalone-executable`, `feature/web-dashboard`, `fix/config-path-resolution`, `fix/serial-rx-paste-buffer`, `fix/via-timer-interrupts`.
 - [ ] **Work-in-progress files in `bin/config/` are deliberately untracked:** `Simple6502-BASIC.bin`, `board_test.bin`, `BIOS-013.bin`, `BIOS-013-manual-merge.bin` and `simple6502-basic.json`. Commit them when they are ready (`simple6502.bin` and the default config are already in the repo).

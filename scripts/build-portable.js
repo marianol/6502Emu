@@ -41,11 +41,34 @@ function run(cmd, args) {
   execFileSync(cmd, args, { stdio: 'inherit' });
 }
 
+// Run a git command in the repo root. Returns stdout, or null if git is not
+// available or this is not a git checkout (e.g. a source tarball).
+function git(args) {
+  try {
+    return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch (e) {
+    return null;
+  }
+}
+
 // 0. Sanity check: native addon must exist
 if (!fs.existsSync(addonSrc)) {
   console.error('Native addon not found at ' + addonSrc);
   console.error('Run "npm run build" first.');
   process.exit(1);
+}
+
+// 0b. Warn if tracked files have uncommitted changes: the bundle is built from
+//     the working tree, so it would not match any commit or release tag.
+const dirty = git(['status', '--porcelain', '--untracked-files=no']);
+if (dirty && dirty.trim()) {
+  // Porcelain lines are "XY path"; do not trim the whole string first, or the
+  // leading space of the first line is lost and its path is cut short.
+  const changed = dirty.split('\n').filter(Boolean).map(line => line.slice(3));
+  console.warn('\n⚠️  Tracked files have uncommitted changes, so this build will not match any commit:');
+  changed.slice(0, 10).forEach(f => console.warn('     ' + f));
+  if (changed.length > 10) console.warn('     ... and ' + (changed.length - 10) + ' more');
+  console.warn('   Commit or stash them before building a release zip.\n');
 }
 
 // 1. Fresh output dir
@@ -75,11 +98,29 @@ console.log('=== Copying default config ===');
 const cfgOut = path.join(outDir, 'config');
 fs.mkdirSync(cfgOut, { recursive: true });
 const cfgSrc = path.join(root, 'bin', 'config');
-for (const f of fs.readdirSync(cfgSrc)) {
-  if (f.endsWith('.json') || f.endsWith('.bin')) {
-    fs.copyFileSync(path.join(cfgSrc, f), path.join(cfgOut, f));
+const wanted = f => f.endsWith('.json') || f.endsWith('.bin');
+let cfgFiles;
+const tracked = git(['ls-files', '--', 'bin/config']);
+if (tracked !== null) {
+  // Only git-tracked files go into the bundle. Untracked work-in-progress
+  // firmware and configs in bin/config must never end up in a release.
+  cfgFiles = tracked.split('\n').filter(Boolean)
+    .filter(p => path.posix.dirname(p) === 'bin/config')            // top level only
+    .map(p => path.posix.basename(p))
+    .filter(wanted)
+    .filter(f => fs.existsSync(path.join(cfgSrc, f)));
+  const skipped = fs.readdirSync(cfgSrc).filter(f => wanted(f) && !cfgFiles.includes(f));
+  if (skipped.length) {
+    console.log('   Skipping untracked files: ' + skipped.join(', '));
   }
+} else {
+  console.warn('⚠️  git not available: copying every .json/.bin in bin/config (may include untracked files)');
+  cfgFiles = fs.readdirSync(cfgSrc).filter(wanted);
 }
+for (const f of cfgFiles) {
+  fs.copyFileSync(path.join(cfgSrc, f), path.join(cfgOut, f));
+}
+console.log('   Bundled config files: ' + cfgFiles.join(', '));
 
 // 5. Write the launcher script
 console.log('=== Writing launcher ===');

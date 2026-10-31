@@ -23,6 +23,15 @@ IRQ fix that makes VIA timer interrupts work (1.6.3); see those entries below.
   firmware out of the box. `BIOS-010.bin` and `BIOS-SerialEcho.bin` remain in the
   repo.
 
+### Fixed
+- The portable build (`npm run build:portable`) no longer packs untracked files.
+  It used to copy every `.json` and `.bin` from `bin/config/`, so work-in-progress
+  firmware ended up in release zips (`BIOS-013.bin` was inside the v1.6.1 zip).
+  It now bundles only git-tracked config files, prints which untracked files it
+  skipped, and warns when tracked files have uncommitted changes, since such a
+  build would not match any commit or tag. If git is not available it falls back
+  to the old behaviour with a warning.
+
 ## [1.6.3] - 2026-10-24
 
 ### Fixed
